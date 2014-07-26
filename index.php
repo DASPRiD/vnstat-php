@@ -1,6 +1,7 @@
 <?php
 require 'vendor/autoload.php';
 $database = new Vnstat\Database();
+$timezone = new DateTimeZone(date_default_timezone_get());
 
 function formatBytes($bytes)
 {
@@ -12,10 +13,10 @@ function formatBytes($bytes)
     return round($bytes) . ' ' . $units[$pow];
 }
 
-function formatDailyBitrate($bytes)
+function formatBitrate($bytes, $seconds)
 {
     $units = ['bit', 'kbit', 'mbit', 'gbit', 'tbit'];
-    $bits  = ($bytes * 8) / (60 * 60 * 24);
+    $bits  = ($bytes * 8) / $seconds;
     $pow   = floor(($bits ? log($bits) : 0) / log(1024));
     $pow   = min($pow, count($units) - 1);
     $bits  /= (1 << (10 * $pow));
@@ -91,7 +92,8 @@ $dayFormatter = new IntlDateFormatter(
             td.total,
             th.average-rate,
             td.average-rate {
-                width: 140px;
+                width: 120px;
+                text-align: right;
             }
 
             th.ratio,
@@ -193,13 +195,27 @@ $dayFormatter = new IntlDateFormatter(
                 </thead>
                 <tbody>
                     <?php foreach ($database->getDays() as $id => $entry): ?>
-                        <?php if (!$entry->isFilled()) { continue; } ?>
+                        <?php
+                        if (!$entry->isFilled()) {
+                            continue;
+                        }
+
+                        // This calculation has to be done because a day may
+                        // have more or less than 24 hours (DST or leapseconds).
+                        $diffDate = clone $entry->getDateTime();
+                        $diffDate->setTimezone($timezone);
+                        $diffDate->setTime(0, 0, 0);
+                        $startTimestamp = $diffDate->getTimestamp();
+                        $diffDate->setTime(23, 59, 59);
+                        $endTimestamp = $diffDate->getTimestamp();
+                        $range = $endTimestamp - $startTimestamp;
+                        ?>
                         <tr>
                             <td class="day"><?php echo $dayFormatter->format($entry->getDateTime()); ?></td>
                             <td class="received"><?php echo formatBytes($entry->getBytesReceived()); ?></td>
                             <td class="sent"><?php echo formatBytes($entry->getBytesSent()); ?></td>
                             <td class="total"><?php echo formatBytes($entry->getBytesReceived() + $entry->getBytesSent()); ?></td>
-                            <td class="average-rate"><?php echo formatDailyBitrate($entry->getBytesReceived() + $entry->getBytesSent()); ?></td>
+                            <td class="average-rate"><?php echo formatBitrate($entry->getBytesReceived() + $entry->getBytesSent(), $range); ?></td>
                             <td class="ratio"><?php echo formatRatio($entry->getBytesReceived(), $entry->getBytesSent()); ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -220,13 +236,29 @@ $dayFormatter = new IntlDateFormatter(
                 </thead>
                 <tbody>
                     <?php foreach ($database->getMonths() as $id => $entry): ?>
-                        <?php if (!$entry->isFilled()) { continue; } ?>
+                        <?php
+                        if (!$entry->isFilled()) {
+                            continue;
+                        }
+
+                        // And again we can't just multiply the number of days
+                        // by the number of normal seconds to be accurate.
+                        $diffDate = clone $entry->getDateTime();
+                        $diffDate->setTimezone($timezone);
+                        $diffDate->setTime(0, 0, 0);
+                        $diffDate->modify('first day of');
+                        $startTimestamp = $diffDate->getTimestamp();
+                        $diffDate->modify('last day of');
+                        $diffDate->setTime(23, 59, 59);
+                        $endTimestamp = $diffDate->getTimestamp();
+                        $range = $endTimestamp - $startTimestamp;
+                        ?>
                         <tr>
                             <td class="month"><?php echo $entry->getDateTime()->format('F Y'); ?></td>
                             <td class="received"><?php echo formatBytes($entry->getBytesReceived()); ?></td>
                             <td class="sent"><?php echo formatBytes($entry->getBytesSent()); ?></td>
                             <td class="total"><?php echo formatBytes($entry->getBytesReceived() + $entry->getBytesSent()); ?></td>
-                            <td class="average-rate"><?php echo formatDailyBitrate($entry->getBytesReceived() + $entry->getBytesSent()); ?></td>
+                            <td class="average-rate"><?php echo formatBitrate($entry->getBytesReceived() + $entry->getBytesSent(), $range); ?></td>
                             <td class="ratio"><?php echo formatRatio($entry->getBytesReceived(), $entry->getBytesSent()); ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -248,14 +280,28 @@ $dayFormatter = new IntlDateFormatter(
                 </thead>
                 <tbody>
                     <?php foreach ($database->getTop10() as $id => $entry): ?>
-                        <?php if (!$entry->isFilled()) { continue; } ?>
+                        <?php
+                        if (!$entry->isFilled()) {
+                            continue;
+                        }
+
+                        // This calculation has to be done because a day may
+                        // have more or less than 24 hours (DST or leapseconds).
+                        $diffDate = clone $entry->getDateTime();
+                        $diffDate->setTimezone($timezone);
+                        $diffDate->setTime(0, 0, 0);
+                        $startTimestamp = $diffDate->getTimestamp();
+                        $diffDate->setTime(23, 59, 59);
+                        $endTimestamp = $diffDate->getTimestamp();
+                        $range = $endTimestamp - $startTimestamp;
+                        ?>
                         <tr>
                             <td class="position"><?php echo ($id + 1); ?></td>
                             <td class="day"><?php echo $dayFormatter->format($entry->getDateTime()); ?></td>
                             <td class="received"><?php echo formatBytes($entry->getBytesReceived()); ?></td>
                             <td class="sent"><?php echo formatBytes($entry->getBytesSent()); ?></td>
                             <td class="total"><?php echo formatBytes($entry->getBytesReceived() + $entry->getBytesSent()); ?></td>
-                            <td class="average-rate"><?php echo formatDailyBitrate($entry->getBytesReceived() + $entry->getBytesSent()); ?></td>
+                            <td class="average-rate"><?php echo formatBitrate($entry->getBytesReceived() + $entry->getBytesSent(), $range); ?></td>
                             <td class="ratio"><?php echo formatRatio($entry->getBytesReceived(), $entry->getBytesSent()); ?></td>
                         </tr>
                     <?php endforeach; ?>
