@@ -170,7 +170,7 @@ $dayFormatter = new IntlDateFormatter(
                             var pow   = Math.floor((y ? Math.log(y) : 0) / Math.log(1024));
                             pow = Math.min(pow, units.length - 1);
 
-                            return Math.round(y / (1 << (10 * pow))) + ' ' + units[pow];
+                            return (Math.round(y / (1 << (10 * pow)) * 10) / 10) + ' ' + units[pow];
                         },
                         "sortX": function (a, b) {
                             // This actually only works because we hacked the
