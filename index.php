@@ -1,6 +1,23 @@
 <?php
 require 'vendor/autoload.php';
-$database = new Vnstat\Database();
+
+if (file_exists(__DIR__ . '/config.php')) {
+    $config = require __DIR__ . '/config.php';
+} else {
+    $config = [];
+}
+
+if (array_key_exists('interfaces', $config) && !empty($config['interfaces'])) {
+    if (array_key_exists('interface', $_GET) && in_array($_GET['interface'], $config['interfaces'])) {
+        $interface = $_GET['interface'];
+    } else {
+        $interface = $config['interfaces'][0];
+    }
+} else {
+    $interface = null;
+}
+
+$database = new Vnstat\Database($interface);
 $timezone = new DateTimeZone(date_default_timezone_get());
 
 function formatBytes($bytes)
@@ -105,6 +122,21 @@ $dayFormatter = new IntlDateFormatter(
     <body>
         <div class="container">
             <div class="page-header">
+                <?php if (array_key_exists('interfaces', $config) && count($config['interfaces']) > 1): ?>
+                    <div class="pull-right">
+                        <div class="input-group">
+                            <span class="input-group-addon">Interface</span>
+                            <select class="form-control" onchange="window.location.href = '?interface=' + this.value;">
+                                <?php foreach ($config['interfaces'] as $option): ?>
+                                    <option value="<?php echo htmlspecialchars($option); ?>"<?php if ($option === $interface): ?> selected="selected"<?php endif; ?>>
+                                        <?php echo htmlspecialchars($option); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
                 <h1>Network Traffic</h1>
             </div>
 

@@ -70,9 +70,18 @@ class Database
      */
     protected $hours = [];
 
-    public function __construct()
+    /**
+     * @param string|null $interface
+     */
+    public function __construct($interface = null)
     {
-        $data = explode("\n", shell_exec('vnstat --dumpdb'));
+        $command = 'vnstat --dumpdb';
+
+        if (null !== $interface) {
+            $command .= sprintf(' --iface %s', $interface);
+        }
+
+        $data = explode("\n", shell_exec($command));
 
         foreach ($data as $datum) {
             if ($datum === '') {
