@@ -1,7 +1,9 @@
 <?php
 namespace Vnstat;
 
+use Cassandra\Date;
 use DateTime;
+use DateTimeZone;
 
 class Database
 {
@@ -9,11 +11,6 @@ class Database
      * @var int
      */
     protected $version;
-
-    /**
-     * @var bool
-     */
-    protected $active;
 
     /**
      * @var string
@@ -46,11 +43,6 @@ class Database
     protected $totalBytesSent = 0;
 
     /**
-     * @var DateTime
-     */
-    protected $bootedAt;
-
-    /**
      * @var Entry[]
      */
     protected $days = [];
@@ -75,103 +67,58 @@ class Database
      */
     public function __construct($interface = null)
     {
-        $command = 'vnstat --dumpdb';
+        $command = 'vnstat --json';
 
         if (null !== $interface) {
             $command .= sprintf(' --iface %s', $interface);
         }
 
-        $data = explode("\n", shell_exec($command));
+        $data = json_decode(shell_exec($command), true);
 
-        foreach ($data as $datum) {
-            if ($datum === '') {
-                continue;
-            }
+        $this->version = $data['vnstatversion'];
+        $interface = $data['interfaces'][0];
+        $this->interface = $interface['id'];
+        $this->nick = $interface['nick'];
+        $this->createdAt = $this->parseDate($interface['created']);
+        $this->updatedAt = $this->parseDate($interface['updated']);
 
-            $values = explode(';', $datum);
-            $type   = $values[0];
+        $this->totalBytesReceived = $interface['traffic']['total']['rx'] * 1024;
+        $this->totalBytesSent = $interface['traffic']['total']['tx'] * 1024;
 
-            switch ($type) {
-                case 'version':
-                    $this->version = (int) $values[1];
-                    break;
+        foreach ($interface['traffic']['days'] as $day) {
+            $this->days[$day['id']] = new Entry(
+                $day['rx'] * 1024,
+                $day['tx'] * 1024,
+                true,
+                $this->parseDate($day)
+            );
+        }
 
-                case 'active':
-                    $this->active = (bool) $values[1];
-                    break;
+        foreach ($interface['traffic']['months'] as $month) {
+            $this->months[$month['id']] = new Entry(
+                $month['rx'] * 1024,
+                $month['tx'] * 1024,
+                true,
+                $this->parseDate($month)
+            );
+        }
 
-                case 'interface':
-                    $this->interface = $values[1];
-                    break;
+        foreach ($interface['traffic']['tops'] as $top) {
+            $this->top10[$top['id']] = new Entry(
+                $top['rx'] * 1024,
+                $top['tx'] * 1024,
+                true,
+                $this->parseDate($top)
+            );
+        }
 
-                case 'nick':
-                    $this->nick = $values[1];
-                    break;
-
-                case 'created':
-                    $this->createdAt = new DateTime('@' . $values[1]);
-                    break;
-
-                case 'updated':
-                    $this->updatedAt = new DateTime('@' . $values[1]);
-                    break;
-
-                case 'totalrx':
-                    $this->totalBytesReceived += $values[1] * 1024 * 1024;
-                    break;
-
-                case 'totaltx':
-                    $this->totalBytesSent += $values[1] * 1024 * 1024;
-                    break;
-
-                case 'totalrxk':
-                    $this->totalBytesReceived += $values[1] * 1024;
-                    break;
-
-                case 'totaltxk':
-                    $this->totalBytesSent += $values[1] * 1024;
-                    break;
-
-                case 'btime':
-                    $this->bootedAt = new DateTime('@' . $values[1]);
-                    break;
-
-                case 'd':
-                    $this->days[(int) $values[1]] = new Entry(
-                        $values[3] * 1024 * 1024 + $values[5] * 1024,
-                        $values[4] * 1024 * 1024 + $values[6] * 1024,
-                        (bool) $values[7],
-                        empty($values[2]) ? null : new DateTime('@' . $values[2])
-                    );
-                    break;
-
-                case 'm':
-                    $this->months[(int) $values[1]] = new Entry(
-                        $values[3] * 1024 * 1024 + $values[5] * 1024,
-                        $values[4] * 1024 * 1024 + $values[6] * 1024,
-                        (bool) $values[7],
-                        empty($values[2]) ? null : new DateTime('@' . $values[2])
-                    );
-                    break;
-
-                case 't':
-                    $this->top10[(int) $values[1]] = new Entry(
-                        $values[3] * 1024 * 1024 + $values[5] * 1024,
-                        $values[4] * 1024 * 1024 + $values[6] * 1024,
-                        (bool) $values[7],
-                        empty($values[2]) ? null : new DateTime('@' . $values[2])
-                    );
-                    break;
-
-                case 'h':
-                    $this->hours[(int) $values[1]] = new Entry(
-                        $values[3] * 1024,
-                        $values[4] * 1024,
-                        !empty($values[2]),
-                        empty($values[2]) ? null : new DateTime('@' . $values[2])
-                    );
-                    break;
-            }
+        foreach ($interface['traffic']['hours'] as $hour) {
+            $this->hours[$hour['id']] = new Entry(
+                $hour['rx'] * 1024,
+                $hour['tx'] * 1024,
+                true,
+                $this->parseDate($hour)
+            );
         }
     }
 
@@ -181,14 +128,6 @@ class Database
     public function getVersion()
     {
         return $this->version;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isActive()
-    {
-        return $this->active;
     }
 
     /**
@@ -240,14 +179,6 @@ class Database
     }
 
     /**
-     * @return DateTime
-     */
-    public function getBootedAt()
-    {
-        return $this->bootedAt;
-    }
-
-    /**
      * @return Entry[]
      */
     public function getDays()
@@ -277,5 +208,26 @@ class Database
     public function getHours()
     {
         return $this->hours;
+    }
+
+    private function parseDate(array $data) {
+        $result = new DateTime();
+        $result->setDate(
+            $data['date']['year'],
+            $data['date']['month'],
+            array_key_exists('day', $data['date']) ? $data['date']['day'] : 1
+        );
+
+        if (array_key_exists('time', $data)) {
+            $result->setTime(
+                $data['time']['hour'],
+                $data['time']['minutes'],
+                0
+            );
+        } else {
+            $result->setTime(0, 0, 0);
+        }
+
+        return $result;
     }
 }
