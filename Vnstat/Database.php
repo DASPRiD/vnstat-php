@@ -4,6 +4,7 @@ namespace Vnstat;
 use Cassandra\Date;
 use DateTime;
 use DateTimeZone;
+use Exception;
 
 class Database
 {
@@ -64,6 +65,7 @@ class Database
 
     /**
      * @param string|null $interface
+     * @throws Exception
      */
     public function __construct($interface = null)
     {
@@ -74,50 +76,67 @@ class Database
         }
 
         $data = json_decode(shell_exec($command), true);
+        $jsonVersion = $data['jsonversion'];
+
+        if (!in_array($jsonVersion, [1, 2])) {
+            throw new Exception('Unknown JSON version');
+        }
 
         $this->version = $data['vnstatversion'];
         $interface = $data['interfaces'][0];
-        $this->interface = $interface['id'];
-        $this->nick = $interface['nick'];
-        $this->createdAt = $this->parseDate($interface['created']);
-        $this->updatedAt = $this->parseDate($interface['updated']);
+        $this->createdAt = $this->parseDate($interface['created'], $jsonVersion);
+        $this->updatedAt = $this->parseDate($interface['updated'], $jsonVersion);
+        $unitMultiplier = 1;
 
-        $this->totalBytesReceived = $interface['traffic']['total']['rx'] * 1024;
-        $this->totalBytesSent = $interface['traffic']['total']['tx'] * 1024;
+        switch ($jsonVersion) {
+            case 1:
+                $unitMultiplier = 1024;
+                $this->interface = $interface['id'];
+                $this->nick = $interface['nick'];
+                break;
+
+            case 2:
+                $this->interface = $interface['name'];
+                $this->nick = $interface['alias'];
+                break;
+        }
+
+        $this->totalBytesReceived = $interface['traffic']['total']['rx'] * $unitMultiplier;
+        $this->totalBytesSent = $interface['traffic']['total']['tx'] * $unitMultiplier;
 
         foreach ($interface['traffic']['days'] as $day) {
             $this->days[$day['id']] = new Entry(
-                $day['rx'] * 1024,
-                $day['tx'] * 1024,
+                $day['rx'] * $unitMultiplier,
+                $day['tx'] * $unitMultiplier,
                 true,
-                $this->parseDate($day)
+                $this->parseDate($day, $jsonVersion)
             );
         }
 
         foreach ($interface['traffic']['months'] as $month) {
             $this->months[$month['id']] = new Entry(
-                $month['rx'] * 1024,
-                $month['tx'] * 1024,
+                $month['rx'] * $unitMultiplier,
+                $month['tx'] * $unitMultiplier,
                 true,
-                $this->parseDate($month)
+                $this->parseDate($month, $jsonVersion)
             );
         }
 
         foreach ($interface['traffic']['tops'] as $top) {
             $this->top10[$top['id']] = new Entry(
-                $top['rx'] * 1024,
-                $top['tx'] * 1024,
+                $top['rx'] * $unitMultiplier,
+                $top['tx'] * $unitMultiplier,
                 true,
-                $this->parseDate($top)
+                $this->parseDate($top, $jsonVersion)
             );
         }
 
         foreach ($interface['traffic']['hours'] as $hour) {
             $this->hours[$hour['id']] = new Entry(
-                $hour['rx'] * 1024,
-                $hour['tx'] * 1024,
+                $hour['rx'] * $unitMultiplier,
+                $hour['tx'] * $unitMultiplier,
                 true,
-                $this->parseDate($hour)
+                $this->parseDate($hour, $jsonVersion)
             );
         }
     }
@@ -210,7 +229,7 @@ class Database
         return $this->hours;
     }
 
-    private function parseDate(array $data) {
+    private function parseDate(array $data, int $jsonVersion) {
         $result = new DateTime();
         $result->setDate(
             $data['date']['year'],
@@ -221,7 +240,7 @@ class Database
         if (array_key_exists('time', $data)) {
             $result->setTime(
                 $data['time']['hour'],
-                $data['time']['minutes'],
+                $data['time'][$jsonVersion === 1 ? 'minutes' : 'minute'],
                 0
             );
         } else {
