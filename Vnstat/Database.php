@@ -87,12 +87,20 @@ class Database
         $this->createdAt = $this->parseDate($interface['created'], $jsonVersion);
         $this->updatedAt = $this->parseDate($interface['updated'], $jsonVersion);
         $unitMultiplier = 1;
+        $daysCategory = 'day';
+        $monthsCategory = 'month';
+        $hoursCategory = 'hour';
+        $topsCategory = 'top';
 
         switch ($jsonVersion) {
             case 1:
                 $unitMultiplier = 1024;
                 $this->interface = $interface['id'];
                 $this->nick = $interface['nick'];
+                $daysCategory = 'days';
+                $monthsCategory = 'months';
+                $hoursCategory = 'hours';
+                $topsCategory = 'tops';
                 break;
 
             case 2:
@@ -104,7 +112,7 @@ class Database
         $this->totalBytesReceived = $interface['traffic']['total']['rx'] * $unitMultiplier;
         $this->totalBytesSent = $interface['traffic']['total']['tx'] * $unitMultiplier;
 
-        foreach ($interface['traffic']['days'] as $day) {
+        foreach ($interface['traffic'][$daysCategory] as $day) {
             $this->days[$day['id']] = new Entry(
                 $day['rx'] * $unitMultiplier,
                 $day['tx'] * $unitMultiplier,
@@ -113,7 +121,7 @@ class Database
             );
         }
 
-        foreach ($interface['traffic']['months'] as $month) {
+        foreach ($interface['traffic'][$monthsCategory] as $month) {
             $this->months[$month['id']] = new Entry(
                 $month['rx'] * $unitMultiplier,
                 $month['tx'] * $unitMultiplier,
@@ -122,7 +130,7 @@ class Database
             );
         }
 
-        foreach ($interface['traffic']['tops'] as $top) {
+        foreach ($interface['traffic'][$topsCategory] as $top) {
             $this->top10[$top['id']] = new Entry(
                 $top['rx'] * $unitMultiplier,
                 $top['tx'] * $unitMultiplier,
@@ -131,13 +139,19 @@ class Database
             );
         }
 
-        foreach ($interface['traffic']['hours'] as $hour) {
+        foreach ($interface['traffic'][$hoursCategory] as $hour) {
             $this->hours[$hour['id']] = new Entry(
                 $hour['rx'] * $unitMultiplier,
                 $hour['tx'] * $unitMultiplier,
                 true,
                 $this->parseDate($hour, $jsonVersion)
             );
+        }
+
+        for ($i = 0; $i < 23; ++$i) {
+            if (!array_key_exists($i, $this->hours)) {
+                $this->hours[$i] = new Entry(0, 0, false, new DateTime());
+            }
         }
     }
 
