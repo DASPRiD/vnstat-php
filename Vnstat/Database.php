@@ -148,7 +148,7 @@ class Database
             );
         }
 
-        for ($i = 0; $i < 23; ++$i) {
+        for ($i = 0; $i <= 23; ++$i) {
             if (!array_key_exists($i, $this->hours)) {
                 $this->hours[$i] = new Entry(0, 0, false, new DateTime());
             }
