@@ -1,7 +1,8 @@
 <?php
 /* 
 	TODO:
-	Split the hours/days/month display into tabs for easier viewing.
+	- Split the hours/days/month display into tabs for easier viewing.
+	- Lift style to css file
 */
 
 /* Print errors for debug purposes */
@@ -36,9 +37,9 @@ if (!$showsent and !$showrec) {
     $showsent = $showrec = True;
 }
 
-/* Set default graph formats */
+/* Set  graph formats */
 $hourgraphtype = (array_key_exists('hourgraphtype', $_GET) ? $_GET['hourgraphtype'] : 'bar');
-$daygraphtype = (array_key_exists('daygraphtype', $_GET) ? $_GET['daygraphtype'] : 'line');
+$daygraphtype = (array_key_exists('daygraphtype', $_GET) ? $_GET['daygraphtype'] : 'bar');
 $monthgraphtype = (array_key_exists('monthgraphtype', $_GET) ? $_GET['monthgraphtype'] : 'bar');
 
 /* Get selected date/month if given */
@@ -78,8 +79,8 @@ function formatRatio($bytesReceived, $bytesSent)
     $percentageReceived = ($bytesReceived / $total * 100);
 
     return sprintf(
-        '<div class="ratio"><div style="width: %f%%;"></div></div>',
-        $percentageReceived
+        '<div title="%f%%" class="ratio"><div style="width: %f%%;"></div></div>',
+        $percentageReceived,$percentageReceived
     );
 }
 
@@ -94,18 +95,11 @@ function find_key_value($array, $key, $val)
     return false;
 }
 
-$dayFormatter = new IntlDateFormatter(
-    'en-GB',
-    IntlDateFormatter::FULL,
-    IntlDateFormatter::NONE,
-    date_default_timezone_get()
-);
-
 /* 	Extracts the defiend time period, inserts missing records and sorts result 
-	$data = THe hour/day/month data to handle
-	$type = hour|day|month
-	$fromStamp = timestamp for beginning of range
-	$toStamp = timestamp for end of range
+		$data = THe hour/day/month data to handle
+		$type = hour|day|month
+		$fromStamp = timestamp for beginning of range
+		$toStamp = timestamp for end of range
 */
 function getDataForTimePeriodandIntervalType($data, $type, $fromStamp, $toStamp) 
 {
@@ -147,16 +141,16 @@ function getDataForTimePeriodandIntervalType($data, $type, $fromStamp, $toStamp)
 		/* Pull out and use anything between (including) from and to time */
 		/* Store xvalue, data value and timestamp to use for sorting */
 		if ($dateTime >= $fromStamp and  $dateTime <= $toStamp  ) {
-			$receivedData['data'][] = ['x' => $xValue, 'y' => $item->getBytesReceived(), 'timestamp' => $item->getDateTime()->getTimestamp()];
-			$sentData['data'][] = ['x' => $xValue, 'y' => $item->getBytesSent(), 'timestamp' => $item->getDateTime()->getTimestamp()];
+			$receivedData['data'][] = ['x' => $xValue, 'y' => $item->getBytesReceived(), 'timestamp' => $item->getDateTime()->getTimestamp(), 'label' => formatBytes($item->getBytesReceived())];
+			$sentData['data'][] = ['x' => $xValue, 'y' => $item->getBytesSent(), 'timestamp' => $item->getDateTime()->getTimestamp(), 'label' => formatBytes($item->getBytesReceived())];
 		}
 	}
 
 	/* Loop through the time interval and add missing data points with correct timestamp for sorting */
 	for ($i = $fromStamp; $i <= $toStamp; $i=strtotime(date($typeFormat,$i).' + '.$intervalStep)) {
 		if (!find_key_value($receivedData,'timestamp',$i)) {
-			$receivedData['data'][] = ['x' => date($xFormat,$i), 'y' => 0, 'timestamp' => $i];
-			$sentData['data'][] = ['x' => date($xFormat,$i), 'y' => 0, 'timestamp' => $i];
+			$receivedData['data'][] = ['x' => date($xFormat,$i), 'y' => 0, 'timestamp' => $i, 'label' => formatBytes(0)];
+			$sentData['data'][] = ['x' => date($xFormat,$i), 'y' => 0, 'timestamp' => $i, 'label' => formatBytes(0)];
 		}
 	}
 
@@ -167,6 +161,14 @@ function getDataForTimePeriodandIntervalType($data, $type, $fromStamp, $toStamp)
 	return array($receivedData, $sentData);
 }
 
+/*	Renders the chart area for supplied data and type
+		$receivedData = Array with dates and values for received data
+		$sentData = Array with dates and values for sent data
+		$charName = Name to use for the chart, must be unique
+		$graphtype = line|bar
+		$showrec = bool if received data should be rendered
+		$showsent = bool if sent data should be rendered
+*/
 function renderChart($receivedData, $sentData, $chartName, $graphtype, $showrec, $showsent) {
 ?>
 	<figure style="width: 100%; height: 400px;" id="<?php echo $chartName ?>-chart"></figure>
@@ -199,6 +201,15 @@ function renderChart($receivedData, $sentData, $chartName, $graphtype, $showrec,
 					// This actually only works because we hacked the
 					// source of xcharts.min.js
 					return 0;
+				},
+				"mouseover": function (d, i) {
+					var pos = $(this).offset();
+					$(tt).css(pos);
+					$(tt).text(d.x + ': ' + d.label);
+					$(tt).show();
+				},
+				"mouseout": function (x) {
+					$(tt).hide();
 				}
 			}
 		);
@@ -206,9 +217,9 @@ function renderChart($receivedData, $sentData, $chartName, $graphtype, $showrec,
 <?php
 }
 
-/*
-$data = the data to render
-$type = day|month|top10
+/*	Renders a table from supplied data
+		$data = the data to render
+		$type = day|month|top10
 */
 function renderDataTable($data, $type) {
 
@@ -221,47 +232,53 @@ function renderDataTable($data, $type) {
 				<th class="received">Received</th>
 				<th class="sent">Sent</th>
 				<th class="total">Total</th>
-				<th class="average-rate">Average Rate</th>
-				<th class="ratio">Ratio</th>
+				<th class="average-rate" title="Data divided by timeperiod. Not average transfer speed.">Average Rate</th>
+				<th class="ratio">Ratio (rx/tx)</th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php 
-			$top10position=0;
+			$top10position=0; // For enumerating the top 10 positions
 			foreach ($data as $id => $entry): ?>
 				<?php
 				if (!$entry->isFilled()) {
 					continue;
 				}
 
-				/* Setting parameters */
-				$classlink=$type;
-				$dateFormat='Y-m-d';
-				$dateFormat2='l, d F Y';
-
-
+				/* mostly wierd stuff from original code I havn't tried to understand, and setting some parameters */
 				$diffDate = clone $entry->getDateTime();
 				$diffDate->setTimezone($timezone);
 				$diffDate->setTime(0, 0, 0);
 				$startTimestamp = $diffDate->getTimestamp();
-				
 				switch($type) {
 					case "day":
+						$dateFormat='Y-m-d';
+						$dateFormat2='l, d F Y';
+						$classlink=$type;
 						break;
 					case "month":
 						$dateFormat='Y-m';
 						$dateFormat2='F Y';			
+						$classlink=$type;
 						$entry->getDateTime()->setTimeZone($timezone);
 						$diffDate->modify('first day of');
 						$startTimestamp = $diffDate->getTimestamp();
 						$diffDate->modify('last day of');
 						break;
 					case "top10":
+						$dateFormat='Y-m-d';
+						$dateFormat2='l, d F Y';
 						$classlink='day';
 						$top10position+=1;
 						break;
 				}
-				$diffDate->setTime(23, 59, 59);
+
+				if(date('Ymd') == date('Ymd', $diffDate->getTimestamp())) {
+					$diffDate->setTime(date('H'),date('i'),date('s'));
+				} else {
+					$diffDate->setTime(23, 59, 59);
+				}
+
 				$endTimestamp = $diffDate->getTimestamp();
 				$range = $endTimestamp - $startTimestamp;				
 
@@ -300,7 +317,7 @@ function renderDataTable($data, $type) {
         <link href="xcharts/xcharts.min.css" rel="stylesheet" />
         <script type="text/javascript" src="xcharts/d3.min.js"></script>
         <script type="text/javascript" src="xcharts/xcharts.min.js"></script>
-
+<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
         <style type="text/css">
             div.ratio {
                 display: inline-block;
@@ -369,9 +386,32 @@ function renderDataTable($data, $type) {
                 color: white;
             }
 
+			.theTooltip {
+				position: absolute;
+				background: #EEE;
+				-webkit-border-radius: 3px;
+				-moz-border-radius: 3px;
+				-ms-border-radius: 3px;
+				-o-border-radius: 3px;
+				border-radius: 3px;
+				padding: 5px;
+				-webkit-box-shadow: 0 1px 3px #000;
+				-moz-box-shadow: 0 1px 3px #000;
+				-ms-box-shadow: 0 1px 3px #000;
+				-o-box-shadow: 0 1px 3px #000;
+				box-shadow: 0 1px 3px #000;
+				border-collapse: separate;
+				display: none;
+			}
+
         </style>
     </head>
     <body>
+		<script type="text/javascript">
+				var tt = document.createElement('div');
+				tt.className = 'theTooltip';
+				document.body.appendChild(tt);
+		</script>
         <form id="dataForm" action="index.php">
 			<input type="hidden" id="daytoshow" name="daytoshow" value="<?php echo $daytoshow ?>"/>
 			<input type="hidden" id="monthtoshow" name="monthtoshow" value="<?php echo $monthtoshow ?>"/>
@@ -443,26 +483,18 @@ function renderDataTable($data, $type) {
 						$toTime=strtotime(date("Y-m-d H:00:00",$toTime).' - 1 hour');
 					}
 
-					/* Fetch all data */
-					/* 
-						TODO: 
-							Could be improved in Database.php to only fetch the specified range. But I doubt it will have any impact
-							since it already picked up the whole json object. It might be needed if the data amount is huge,
-							which should only happen if vnstat logging is manually adjusted.
-					*/
                     $hours = $database->getHours(); //Fetch raw data
 					
 					list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($hours, 'hour', $fromTime, $toTime); //Filter and pad the data
 					
 					renderChart($receivedData, $sentData, 'hourly', $hourgraphtype, $showrec, $showsent); //Draw the diagram
+				?>
 
-
-                echo"<BR/>   		
+                <BR/>   		
 
 				<h2>Days</h2>
-				";
-
-				renderDataTable($database->getDays(),'day');
+				<?php
+					renderDataTable($database->getDays(),'day');
 				?>
 				
 				<BR/>
@@ -475,7 +507,8 @@ function renderDataTable($data, $type) {
                 </h2>
 
                 <?php
-                    if ($monthgiven) {
+					/* Print header */
+					if ($monthgiven) {
 						echo 'Showing traffic for '.date("F Y",$monthtoshow);
 						echo "<br/>";
 					
@@ -484,6 +517,7 @@ function renderDataTable($data, $type) {
 						echo "<br/>";
 					}
 
+					/* Set time range to render */
 					if($monthgiven) {
 						$toDate = strtotime(date("Y-m-01",$monthtoshow). ' + 1 month');
 					} else {
@@ -503,15 +537,15 @@ function renderDataTable($data, $type) {
 					list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($days, 'day', $fromDate, $toDate); //Filter and pad data
 					
 					renderChart($receivedData, $sentData, 'daily', $daygraphtype, $showrec, $showsent); //Draw the diagram
-				
-				echo "<BR/>   
+				?>
+				<BR/>   
  				
                 <h2>Months</h2>
-				";
-				renderDataTable($database->getMonths(),'month');
+				<?php
+					renderDataTable($database->getMonths(),'month');
 				?>
 				
-				<BR>
+				<BR/>
 
                 <h2>Monthly
                     <select name="monthgraphtype" onChange="this.form.submit();">
@@ -521,27 +555,26 @@ function renderDataTable($data, $type) {
                 </h2>
 
 				<?php
+					/* Prnt header */
 					echo 'Showing last 12 months';
 					echo "<br/>";
                     
+					/* Set time range to render */
 					$toMonth = strtotime(date("Y-m-01"));
 					$fromMonth = strtotime(date("Y-m-d",$toMonth). ' - 1 year');					
-					
-                   
-                    $months = $database->getMonths();
+					                   
+                    $months = $database->getMonths(); //Fetch raw data
                     
-
-					list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($months, 'month', $fromMonth, $toMonth);
+					list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($months, 'month', $fromMonth, $toMonth); //Filter and pad data
 					
-					renderChart($receivedData, $sentData, 'monthly', $monthgraphtype, $showrec, $showsent);                 
+					renderChart($receivedData, $sentData, 'monthly', $monthgraphtype, $showrec, $showsent); //Draw the diagram
                 ?>
 
 				<BR/>
 				
                 <h2>Top 10 days (lifetime)</h2>
 				<?php
-
-				renderDataTable($database->getTop10(),'top10');
+					renderDataTable($database->getTop10(),'top10');
 				?>
 
             </div>
