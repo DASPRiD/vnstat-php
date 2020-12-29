@@ -1,7 +1,6 @@
 <?php
 /* 
 	TODO:
-	- Split the hours/days/month display into tabs for easier viewing.
 	- Lift style to css file
 */
 
@@ -49,8 +48,10 @@ $daygiven = (array_key_exists('daytoshow', $_GET) and $_GET['daytoshow'] != '') 
 $monthtoshow = (array_key_exists('monthtoshow', $_GET) ? $_GET['monthtoshow'] : '');
 $monthgiven = (array_key_exists('monthtoshow', $_GET) and $_GET['monthtoshow'] != '') ? True : False;
 
+/* Set tab to show */
+$tabtoshow = (array_key_exists('tabtoshow', $_GET) ? $_GET['tabtoshow'] : 'hours');
+
 $database = new Vnstat\Database($interface);
-$timezone = new DateTimeZone(date_default_timezone_get());
 
 function formatBytes($bytes)
 {
@@ -111,7 +112,7 @@ function getDataForTimePeriodandIntervalType($data, $type, $fromStamp, $toStamp)
 			$intervalStep='1 hour';
 			break;
 		case "day":
-			$xFormat='d/m';
+			$xFormat='j/m';
 			$typeFormat='Y-m-d';
 			$intervalStep='1 day';
 			break;
@@ -170,6 +171,7 @@ function getDataForTimePeriodandIntervalType($data, $type, $fromStamp, $toStamp)
 		$showsent = bool if sent data should be rendered
 */
 function renderChart($receivedData, $sentData, $chartName, $graphtype, $showrec, $showsent) {
+
 ?>
 	<figure style="width: 100%; height: 400px;" id="<?php echo $chartName ?>-chart"></figure>
 	<script type="text/javascript">
@@ -222,7 +224,31 @@ function renderChart($receivedData, $sentData, $chartName, $graphtype, $showrec,
 		$type = day|month|top10
 */
 function renderDataTable($data, $type) {
-
+	$timezone = new DateTimeZone(date_default_timezone_get());
+	
+	/* Set parameters and sort data */
+	switch($type) {
+		case "day":
+			$dateFormat='Y-m-d';
+			$dateFormat2='l, d F Y';
+			$classlink=$type;
+			$tabName = 'hours';
+			usort($data, fn($a, $b) => $b->getDateTime() <=> $a->getDateTime());
+			break;
+		case "month":
+			$dateFormat='Y-m';
+			$dateFormat2='F Y';			
+			$classlink=$type;
+			$tabName = 'days';
+			usort($data, fn($a, $b) => $b->getDateTime() <=> $a->getDateTime());
+			break;
+		case "top10":
+			$dateFormat='Y-m-d';
+			$dateFormat2='l, d F Y';
+			$classlink='day';
+			$top10position+=1;
+			break;
+	}
 	?>
 	<table class="table table-bordered">
 		<thead>
@@ -232,47 +258,32 @@ function renderDataTable($data, $type) {
 				<th class="received">Received</th>
 				<th class="sent">Sent</th>
 				<th class="total">Total</th>
-				<th class="average-rate" title="Data divided by timeperiod. Not average transfer speed.">Average Rate</th>
+				<th class="average-rate" title="Data divided by timeperiod.&#013;&#010;Not average transfer speed.">Average Rate</th>
 				<th class="ratio">Ratio (rx/tx)</th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php 
 			$top10position=0; // For enumerating the top 10 positions
-			foreach ($data as $id => $entry): ?>
-				<?php
+			
+			foreach ($data as $id => $entry): 
 				if (!$entry->isFilled()) {
 					continue;
 				}
 
-				/* mostly wierd stuff from original code I havn't tried to understand, and setting some parameters */
+				/* Wierd stuff from original code for calculating average */
 				$diffDate = clone $entry->getDateTime();
 				$diffDate->setTimezone($timezone);
 				$diffDate->setTime(0, 0, 0);
 				$startTimestamp = $diffDate->getTimestamp();
-				switch($type) {
-					case "day":
-						$dateFormat='Y-m-d';
-						$dateFormat2='l, d F Y';
-						$classlink=$type;
-						break;
-					case "month":
-						$dateFormat='Y-m';
-						$dateFormat2='F Y';			
-						$classlink=$type;
+				if($type == 'month') {
 						$entry->getDateTime()->setTimeZone($timezone);
 						$diffDate->modify('first day of');
 						$startTimestamp = $diffDate->getTimestamp();
 						$diffDate->modify('last day of');
-						break;
-					case "top10":
-						$dateFormat='Y-m-d';
-						$dateFormat2='l, d F Y';
-						$classlink='day';
-						$top10position+=1;
-						break;
 				}
 
+				/* Fix range for current date */
 				if(date('Ymd') == date('Ymd', $diffDate->getTimestamp())) {
 					$diffDate->setTime(date('H'),date('i'),date('s'));
 				} else {
@@ -287,7 +298,7 @@ function renderDataTable($data, $type) {
 				<tr>
 					<?=($type=='top10') ? '<td class="position">'.$top10position.'</td>' : ''?>
 					<td class="<?=$classlink?>">
-						<a href="javascript:return(false);" onClick="document.getElementById('<?=$classlink?>toshow').value='<?=strtotime($entry->getDateTime()->format($dateFormat)); ?>';document.getElementById('dataForm').submit();">
+						<a href="javascript:return(false);" onClick="document.getElementById('tabtoshow').value='<?=$tabName?>';document.getElementById('<?=$classlink?>toshow').value='<?=strtotime($entry->getDateTime()->format($dateFormat)); ?>';document.getElementById('dataForm').submit();">
 						<?=$entry->getDateTime()->format($dateFormat2); ?>
 						</a>
 					</td>
@@ -301,6 +312,51 @@ function renderDataTable($data, $type) {
 		</tbody>
 	</table>
 	<?php	
+}
+
+/*	Render a dropdown list for selecting day/month to see 
+	$data = the data to use for rendering
+	$type = day|month defining what to show as options in the list
+	$itemtoshow = timestamp of currently selected item (if any)
+*/
+function renderSelectList($data,$type,$itemtoshow) {
+	echo "Show <select name=\"{$type}list\" onChange=\"document.getElementById('{$type}toshow').value=this.value;this.form.submit();\">";
+	
+	/* Set parameters for rendering and print base option */
+	switch($type) {
+		case 'day':
+			$dateFormat = 'Y-m-d';
+			$dateFormat2 = 'Y-m-d';
+			echo '<option value="">Last 24 hours</option>';
+			break;
+		case 'month':
+			$dateFormat = 'F Y';
+			$dateFormat2 = 'Y-m';
+			echo '<option value="">Last month</option>';
+			break;
+	}
+
+	$options = [];
+	
+	/* Loop data and pull out all viable options in correct format */
+	foreach ($data as $datapoint) {
+		if($datapoint->getBytesSent() > 0 or $datapoint->getBytesReceived() > 0) {
+			$options[date($dateFormat,$datapoint->getDateTime()->getTimestamp())] = strtotime(date($dateFormat2,$datapoint->getDateTime()->getTimestamp()));
+		}
+	}
+	
+	arsort($options);
+	
+	/* Print data as options */
+	foreach($options as $date => $time) {
+		echo $time;
+		echo '<option value="'.$time.'"';
+		if($time == $itemtoshow) {
+			echo ' selected';
+		}
+		echo '>'.$date.'</option>';
+	}
+	echo '</select>';
 }
 
 ?>
@@ -317,8 +373,15 @@ function renderDataTable($data, $type) {
         <link href="xcharts/xcharts.min.css" rel="stylesheet" />
         <script type="text/javascript" src="xcharts/d3.min.js"></script>
         <script type="text/javascript" src="xcharts/xcharts.min.js"></script>
-<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+		<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
         <style type="text/css">
+
+			body, html {
+				height: 100%;
+				margin: 0;
+				width: 100%;
+			}
+		
             div.ratio {
                 display: inline-block;
                 width: 100px;
@@ -404,17 +467,34 @@ function renderDataTable($data, $type) {
 				display: none;
 			}
 
+			.tablink {
+				background-color: #555;
+				color: white;
+				float: left;
+				border: none;
+				outline: none;
+				cursor: pointer;
+				padding: 5px 5px;
+				font-size: 14px;
+				width: 25%;
+			}
+
+			.tablink:hover {
+				background-color: #777;
+			}
+
+			.tabcontent {
+				display: block;
+				padding: 40px 20px;
+				width: 100%;
+			}
         </style>
     </head>
     <body>
-		<script type="text/javascript">
-				var tt = document.createElement('div');
-				tt.className = 'theTooltip';
-				document.body.appendChild(tt);
-		</script>
         <form id="dataForm" action="index.php">
 			<input type="hidden" id="daytoshow" name="daytoshow" value="<?php echo $daytoshow ?>"/>
 			<input type="hidden" id="monthtoshow" name="monthtoshow" value="<?php echo $monthtoshow ?>"/>
+			<input type="hidden" id="tabtoshow" name="tabtoshow" value="<?php echo $tabtoshow ?>"/>
             <div class="container">
                 <div class="page-header">
                     <?php if (array_key_exists('interfaces', $config) && count($config['interfaces']) > 1): ?>
@@ -432,10 +512,10 @@ function renderDataTable($data, $type) {
                         </div>
                     <?php endif; ?>
                     
-				<BR/><BR/>
-				<h1>Network Traffic for <?php echo $database->getInterface()." - (" .$database->getNick().")" ?> </h1>
+					<BR/><BR/>
+					<h1>Network Traffic for <?php echo $database->getInterface()." - (" .$database->getNick().")" ?> </h1>
                 </div>
-				<a href="index.php">Reset selections</a><BR/>
+				<a href="index.php">Reset all selections</a><BR/>
                 <div>
                     <table class="table table-bordered datatype">
                             <tr>
@@ -450,134 +530,160 @@ function renderDataTable($data, $type) {
                 </div>
                 
                 <BR/>
+				<button typ="button" class="tablink" onclick="openPage('hours',this, '#5cb85c');return(false);"<?=($tabtoshow=='hours') ? 'id="defaultOpen"' : '' ?>>Hours</button>
+				<button typ="button"  class="tablink" onclick="openPage('days', this, '#5cb85c');return(false);"<?=($tabtoshow=='days') ? 'id="defaultOpen"' : '' ?>>Days</button>
+				<button typ="button"  class="tablink" onclick="openPage('months', this, '#5cb85c');return(false);"<?=($tabtoshow=='months') ? 'id="defaultOpen"' : '' ?>>Months</button>
+				<button typ="button"  class="tablink" onclick="openPage('top10', this, '#5cb85c');return(false);"<?=($tabtoshow=='top10') ? 'id="defaultOpen"' : '' ?>>Top 10</button>
+				<div id="hours" class="tabcontent">
+					<?php
+						/* Print header */
+						if ($daygiven) {
+							echo '<h2>Hourly traffic for '.date("l Y-m-d",$daytoshow).'</h2>';
 
-                <h2>Hourly 
-                    <select name="hourgraphtype" onChange="this.form.submit();">
-                        <option value="bar" <?php if($hourgraphtype=='bar') { echo "selected"; } ?>>Bar</option>
-                        <option value="line" <?php if($hourgraphtype=='line') { echo "selected"; } ?>>Line</option>
-                    </select>
-                </h2>
-				<?php
-					/* Print header */
-					if ($daygiven) {
-						echo 'Showing traffic for '.date("D Y-m-d",$daytoshow);
-						echo "<br/>";
+						} else {
+							echo '<h2> Hourly traffic for last 24 hours</h2>';
+							
+						}
+
+						/* Set time range to render */					
+						if($daygiven) {
+							$toTime = strtotime(date("Y-m-d H:00:00",$daytoshow). ' + 1 day');
+						} else {
+							$toTime = strtotime(date("Y-m-d H:00:00"));
+						}
+
+						$fromTime = strtotime(date("Y-m-d H:00:00",$toTime). ' - 1 day');
+
+						if(!$daygiven) {
+							$fromTime=strtotime(date("Y-m-d H:00:00",$fromTime).' + 1 hour');
+						} else {
+							$toTime=strtotime(date("Y-m-d H:00:00",$toTime).' - 1 hour');
+						}
+
+						$hours = $database->getHours(); //Fetch raw data
+
+						
+						renderSelectList($hours,'day',$daytoshow);
+						echo "<BR/><BR/>";
+						
+						list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($hours, 'hour', $fromTime, $toTime); //Filter and pad the data
+						
+						renderChart($receivedData, $sentData, 'hourly', $hourgraphtype, $showrec, $showsent); //Draw the diagram
+
+					?>
+					Graph type: <select name="hourgraphtype" onChange="this.form.submit();">
+						<option value="bar" <?php if($hourgraphtype=='bar') { echo "selected"; } ?>>Bar</option>
+						<option value="line" <?php if($hourgraphtype=='line') { echo "selected"; } ?>>Line</option>
+					</select>
+				</div>
+				<div id="days" class="tabcontent">
+					<?php
+						/* Print header */
+						if ($monthgiven) {
+							echo '<h2>Daily traffic for '.date("F Y",$monthtoshow).'</h2>';
+						
+						} else {
+							echo '<h2>Daily traffic for latest month</h2>';
+						}
+
+						/* Set time range to render */
+						if($monthgiven) {
+							$toDate = strtotime(date("Y-m-01",$monthtoshow). ' + 1 month');
+						} else {
+							$toDate = strtotime(date("Y-m-d"));
+						}
+						
+						$fromDate = strtotime(date("Y-m-d",$toDate). ' - 1 month');
+						
+						if(!$monthgiven) {
+							$fromDate=strtotime(date("Y-m-d",$fromDate).' + 1 day');
+						} else {
+							$toDate=strtotime(date("Y-m-d",$toDate).' - 1 day');
+						}
+					   
+						$days = $database->getDays(); //Fetch raw data
+
+						renderSelectList($days,'month',$monthtoshow);
+						echo "<BR/><BR/>";
+
+						
+						list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($days, 'day', $fromDate, $toDate); //Filter and pad data
+						
+						renderChart($receivedData, $sentData, 'daily', $daygraphtype, $showrec, $showsent); //Draw the diagram
 					
-					} else {
-						echo 'Showing last 24 hours to '.date("l Y-m-d H:00");
-						echo "<br/>";
-					}
-
-					/* Set time range to render */					
-					if($daygiven) {
-						$toTime = strtotime(date("Y-m-d H:00:00",$daytoshow). ' + 1 day');
-					} else {
-						$toTime = strtotime(date("Y-m-d H:00:00"));
-					}
-
-					$fromTime = strtotime(date("Y-m-d H:00:00",$toTime). ' - 1 day');
-
-					if(!$daygiven) {
-						$fromTime=strtotime(date("Y-m-d H:00:00",$fromTime).' + 1 hour');
-					} else {
-						$toTime=strtotime(date("Y-m-d H:00:00",$toTime).' - 1 hour');
-					}
-
-                    $hours = $database->getHours(); //Fetch raw data
+						echo "<h2>Days</h2>";
 					
-					list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($hours, 'hour', $fromTime, $toTime); //Filter and pad the data
+						renderDataTable($database->getDays(),'day');
+					?>
+					Graph type: <select name="daygraphtype" onChange="this.form.submit();">
+						<option value="bar" <?php if($daygraphtype=='bar') { echo "selected"; } ?>>Bar</option>
+						<option value="line" <?php if($daygraphtype=='line') { echo "selected"; } ?>>Line</option>
+					</select>
+				</div>
+
+				<div id="months" class="tabcontent">
+					<h2>Monthly traffic for latest 12 months</h2>
+					<?php
+						
+						/* Set time range to render */
+						$toMonth = strtotime(date("Y-m-01"));
+						$fromMonth = strtotime(date("Y-m-d",$toMonth). ' - 1 year');					
+										   
+						$months = $database->getMonths(); //Fetch raw data
+						
+						list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($months, 'month', $fromMonth, $toMonth); //Filter and pad data
+						
+						renderChart($receivedData, $sentData, 'monthly', $monthgraphtype, $showrec, $showsent); //Draw the diagram
+					?>
+					Graph type: <select name="monthgraphtype" onChange="this.form.submit();">
+						<option value="bar" <?php if($monthgraphtype=='bar') { echo "selected"; } ?>>Bar</option>
+						<option value="line" <?php if($monthgraphtype=='line') { echo "selected"; } ?>>Line</option>
+					</select>
+					<BR/>   
 					
-					renderChart($receivedData, $sentData, 'hourly', $hourgraphtype, $showrec, $showsent); //Draw the diagram
-				?>
+					<h2>Months</h2>
+					<?php renderDataTable($database->getMonths(),'month'); ?>
+				</div>
+				<div id="top10" class="tabcontent">
 
-                <BR/>   		
-
-				<h2>Days</h2>
-				<?php
-					renderDataTable($database->getDays(),'day');
-				?>
-				
-				<BR/>
-				
-                <h2>Daily
-                    <select name="daygraphtype" onChange="this.form.submit();">
-                        <option value="bar" <?php if($daygraphtype=='bar') { echo "selected"; } ?>>Bar</option>
-                        <option value="line" <?php if($daygraphtype=='line') { echo "selected"; } ?>>Line</option>
-                    </select>
-                </h2>
-
-                <?php
-					/* Print header */
-					if ($monthgiven) {
-						echo 'Showing traffic for '.date("F Y",$monthtoshow);
-						echo "<br/>";
+					<BR/>
 					
-					} else {
-						echo 'Showing last month to '.date("l dS")." of ".date("F Y");
-						echo "<br/>";
-					}
+					<h2>Top 10 days (lifetime)</h2>
+					<?php renderDataTable($database->getTop10(),'top10'); ?>
+				</div>
+			</div>
+		</form>
+		<script type="text/javascript">
+			var tt = document.createElement('div');
+			tt.className = 'theTooltip';
+			document.body.appendChild(tt);
+			
+			function openPage(pageName, elmnt, color) {
 
-					/* Set time range to render */
-					if($monthgiven) {
-						$toDate = strtotime(date("Y-m-01",$monthtoshow). ' + 1 month');
-					} else {
-						$toDate = strtotime(date("Y-m-d"));
-					}
-					
-					$fromDate = strtotime(date("Y-m-d",$toDate). ' - 1 month');
-					
-					if(!$monthgiven) {
-						$fromDate=strtotime(date("Y-m-d",$fromDate).' + 1 day');
-					} else {
-						$toDate=strtotime(date("Y-m-d",$toDate).' - 1 day');
-					}
-                   
-                    $days = $database->getDays(); //Fetch raw data
-					
-					list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($days, 'day', $fromDate, $toDate); //Filter and pad data
-					
-					renderChart($receivedData, $sentData, 'daily', $daygraphtype, $showrec, $showsent); //Draw the diagram
-				?>
-				<BR/>   
- 				
-                <h2>Months</h2>
-				<?php
-					renderDataTable($database->getMonths(),'month');
-				?>
-				
-				<BR/>
+				document.getElementById('tabtoshow').value=pageName;
 
-                <h2>Monthly
-                    <select name="monthgraphtype" onChange="this.form.submit();">
-                        <option value="bar" <?php if($monthgraphtype=='bar') { echo "selected"; } ?>>Bar</option>
-                        <option value="line" <?php if($monthgraphtype=='line') { echo "selected"; } ?>>Line</option>
-                    </select>
-                </h2>
+				// Hide all elements with class="tabcontent" by default */
+				var i, tabcontent, tablinks;
+				tabcontent = document.getElementsByClassName("tabcontent");
+				for (i = 0; i < tabcontent.length; i++) {
+				tabcontent[i].style.display = "none";
+				}
 
-				<?php
-					/* Prnt header */
-					echo 'Showing last 12 months';
-					echo "<br/>";
-                    
-					/* Set time range to render */
-					$toMonth = strtotime(date("Y-m-01"));
-					$fromMonth = strtotime(date("Y-m-d",$toMonth). ' - 1 year');					
-					                   
-                    $months = $database->getMonths(); //Fetch raw data
-                    
-					list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($months, 'month', $fromMonth, $toMonth); //Filter and pad data
-					
-					renderChart($receivedData, $sentData, 'monthly', $monthgraphtype, $showrec, $showsent); //Draw the diagram
-                ?>
+				// Remove the background color of all tablinks/buttons
+				tablinks = document.getElementsByClassName("tablink");
+				for (i = 0; i < tablinks.length; i++) {
+				tablinks[i].style.backgroundColor = "";
+				}
 
-				<BR/>
-				
-                <h2>Top 10 days (lifetime)</h2>
-				<?php
-					renderDataTable($database->getTop10(),'top10');
-				?>
+				// Show the specific tab content
+				document.getElementById(pageName).style.display = "block";
 
-            </div>
-        </form>
+				// Add the specific color to the button used to open the tab content
+				elmnt.style.backgroundColor = color;
+			}
+
+			// Get the element with id="defaultOpen" and click on it
+			document.getElementById("defaultOpen").click();
+		</script>
     </body>
 </html>
