@@ -13,27 +13,27 @@ require 'vendor/autoload.php';
 
 /* Fetch config file specifying interfaces if it exists */
 if (file_exists(__DIR__ . '/config.php')) {
-    $config = require __DIR__ . '/config.php';
+	$config = require __DIR__ . '/config.php';
 } else {
-    $config = [];
+	$config = [];
 }
 
 /* Check if any interfaces are available and if one is selected */
 if (array_key_exists('interfaces', $config) && !empty($config['interfaces'])) {
-    if (array_key_exists('interface', $_GET) && in_array($_GET['interface'], array_keys($config['interfaces']))) {
-        $interface = $_GET['interface'];
-    } else {
-        $interface = array_keys($config['interfaces'])[0];
-    }
+	if (array_key_exists('interface', $_GET) && in_array($_GET['interface'], array_keys($config['interfaces']))) {
+		$interface = $_GET['interface'];
+	} else {
+		$interface = array_keys($config['interfaces'])[0];
+	}
 } else {
-    $interface = null;
+	$interface = null;
 }
 
 /* Check if sent/received data should be rendered */
 $showsent = (array_key_exists('showsent', $_GET));
 $showrec = (array_key_exists('showrec', $_GET));
 if (!$showsent and !$showrec) {
-    $showsent = $showrec = True;
+	$showsent = $showrec = True;
 }
 
 /* Set  graph formats */
@@ -55,45 +55,45 @@ $database = new Vnstat\Database($interface);
 
 function formatBytes($bytes)
 {
-    $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
-    $pow   = floor(($bytes ? log($bytes) : 0) / log(1024));
-    $pow   = min($pow, count($units) - 1);
-    $bytes /= pow(1024, $pow);
+	$units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+	$pow   = floor(($bytes ? log($bytes) : 0) / log(1024));
+	$pow   = min($pow, count($units) - 1);
+	$bytes /= pow(1024, $pow);
 
-    return round($bytes) . ' ' . $units[$pow];
+	return round($bytes) . ' ' . $units[$pow];
 }
 
 function formatBitrate($bytes, $seconds)
 {
-    $units = ['bit', 'kbit', 'mbit', 'gbit', 'tbit'];
-    $bits  = ($bytes * 8) / $seconds;
-    $pow   = floor(($bits ? log($bits) : 0) / log(1024));
-    $pow   = min($pow, count($units) - 1);
-    $bits  /= (1 << (10 * $pow));
+	$units = ['bit', 'kbit', 'mbit', 'gbit', 'tbit'];
+	$bits  = ($bytes * 8) / $seconds;
+	$pow   = floor(($bits ? log($bits) : 0) / log(1024));
+	$pow   = min($pow, count($units) - 1);
+	$bits  /= (1 << (10 * $pow));
 
-    return round($bits, 2) . ' ' . $units[$pow] . '/s';
+	return round($bits, 2) . ' ' . $units[$pow] . '/s';
 }
 
 function formatRatio($bytesReceived, $bytesSent)
 {
-    $total = $bytesReceived + $bytesSent;
-    $percentageReceived = ($bytesReceived / $total * 100);
+	$total = $bytesReceived + $bytesSent;
+	$percentageReceived = ($bytesReceived / $total * 100);
 
-    return sprintf(
-        '<div title="%f%%" class="ratio"><div style="width: %f%%;"></div></div>',
-        $percentageReceived,$percentageReceived
-    );
+	return sprintf(
+		'<div title="%f%%" class="ratio"><div style="width: %f%%;"></div></div>',
+		$percentageReceived,$percentageReceived
+	);
 }
 
 /* Loops through a multidimensional array and checks if a key has a specific value */
 function find_key_value($array, $key, $val)
 {
-    foreach ($array as $item)
-    {
-        if (is_array($item) && find_key_value($item, $key, $val)) return true;
-        if (isset($item[$key]) && $item[$key] == $val) return true;
-    }
-    return false;
+	foreach ($array as $item)
+	{
+		if (is_array($item) && find_key_value($item, $key, $val)) return true;
+		if (isset($item[$key]) && $item[$key] == $val) return true;
+	}
+	return false;
 }
 
 /* 	Extracts the defiend time period, inserts missing records and sorts result 
@@ -362,60 +362,60 @@ function renderSelectList($data,$type,$itemtoshow) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8" />
-        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+	<head>
+		<meta charset="utf-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
 
-        <title>Network Traffic</title>
-        <link href="bootstrap-3.2.0-dist/css/bootstrap.min.css" rel="stylesheet" />
-        <link href="bootstrap-3.2.0-dist/css/bootstrap-theme.min.css" rel="stylesheet" />
-        <link href="xcharts/xcharts.min.css" rel="stylesheet" />
-        <script type="text/javascript" src="xcharts/d3.min.js"></script>
-        <script type="text/javascript" src="xcharts/xcharts.min.js"></script>
+		<title>Network Traffic</title>
+		<link href="bootstrap-3.2.0-dist/css/bootstrap.min.css" rel="stylesheet" />
+		<link href="bootstrap-3.2.0-dist/css/bootstrap-theme.min.css" rel="stylesheet" />
+		<link href="xcharts/xcharts.min.css" rel="stylesheet" />
+		<script type="text/javascript" src="xcharts/d3.min.js"></script>
+		<script type="text/javascript" src="xcharts/xcharts.min.js"></script>
 		<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
 		<link rel="stylesheet" href="styles.css">
-    </head>
-    <body>
-        <form id="dataForm" action="index.php">
+	</head>
+	<body>
+		<form id="dataForm" action="index.php">
 			<input type="hidden" id="daytoshow" name="daytoshow" value="<?php echo $daytoshow ?>"/>
 			<input type="hidden" id="monthtoshow" name="monthtoshow" value="<?php echo $monthtoshow ?>"/>
 			<input type="hidden" id="tabtoshow" name="tabtoshow" value="<?php echo $tabtoshow ?>"/>
-            <div class="container">
-                <div class="page-header">
-                    <?php if (array_key_exists('interfaces', $config) && count($config['interfaces']) > 1): ?>
-                        <div class="pull-right">
-                            <div class="input-group">
-                                <span class="input-group-addon">Interface</span>
-                                <select name="interface" class="form-control" onchange="this.form.submit();">
-                                    <?php foreach ($config['interfaces'] as $option => $val): ?>
-                                        <option value="<?php echo htmlspecialchars($option); ?>"<?php if ($option === $interface): ?> selected="selected"<?php endif; ?>>
-                                            <?php echo htmlspecialchars($option)." - (".htmlspecialchars($val).")"; ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-                    
+			<div class="container">
+				<div class="page-header">
+					<?php if (array_key_exists('interfaces', $config) && count($config['interfaces']) > 1): ?>
+						<div class="pull-right">
+							<div class="input-group">
+								<span class="input-group-addon">Interface</span>
+								<select name="interface" class="form-control" onchange="this.form.submit();">
+									<?php foreach ($config['interfaces'] as $option => $val): ?>
+										<option value="<?php echo htmlspecialchars($option); ?>"<?php if ($option === $interface): ?> selected="selected"<?php endif; ?>>
+											<?php echo htmlspecialchars($option)." - (".htmlspecialchars($val).")"; ?>
+										</option>
+									<?php endforeach; ?>
+								</select>
+							</div>
+						</div>
+					<?php endif; ?>
+					
 					<BR/><BR/>
 					<h1>Network traffic for <?php echo $database->getInterface()." - (" .$database->getNick().")" ?> </h1>
-                </div>
+				</div>
 				<a href="index.php">Reset all selections</a><BR/>
-                <div>
-                    <table class="table table-bordered datatype">
-                            <tr>
-                                <td class="recdata"><input type="checkbox" name="showrec" <?php echo ($showrec) ? "checked" :""; ?> onchange="this.form.submit();"/></td>
-                                <td class="recdata">Received data</td>
-                            </tr>
-                            <tr>
-                                <td class="sentdata"><input type="checkbox" name="showsent" <?php echo ($showsent) ? "checked" :""; ?> onchange="this.form.submit();"/></td>
-                                <td class="sentdata">Sent data</td>
-                            </tr>
-                    </table>
-                </div>
-                
-                <BR/>
+				<div>
+					<table class="table table-bordered datatype">
+							<tr>
+								<td class="recdata"><input type="checkbox" name="showrec" <?php echo ($showrec) ? "checked" :""; ?> onchange="this.form.submit();"/></td>
+								<td class="recdata">Received data</td>
+							</tr>
+							<tr>
+								<td class="sentdata"><input type="checkbox" name="showsent" <?php echo ($showsent) ? "checked" :""; ?> onchange="this.form.submit();"/></td>
+								<td class="sentdata">Sent data</td>
+							</tr>
+					</table>
+				</div>
+				
+				<BR/>
 				<button typ="button" class="tablink" onclick="openPage('hours',this, '#5cb85c');return(false);"<?=($tabtoshow=='hours') ? 'id="defaultOpen"' : '' ?>>Hours</button>
 				<button typ="button"  class="tablink" onclick="openPage('days', this, '#5cb85c');return(false);"<?=($tabtoshow=='days') ? 'id="defaultOpen"' : '' ?>>Days</button>
 				<button typ="button"  class="tablink" onclick="openPage('months', this, '#5cb85c');return(false);"<?=($tabtoshow=='months') ? 'id="defaultOpen"' : '' ?>>Months</button>
@@ -431,7 +431,7 @@ function renderSelectList($data,$type,$itemtoshow) {
 							
 						}
 
-						/* Set time range to render */					
+						/* Set time range to render */
 						if($daygiven) {
 							$toTime = strtotime(date("Y-m-d H:00:00",$daytoshow). ' + 1 day');
 						} else {
@@ -486,7 +486,7 @@ function renderSelectList($data,$type,$itemtoshow) {
 						} else {
 							$toDate=strtotime(date("Y-m-d",$toDate).' - 1 day');
 						}
-					   
+
 						$days = $database->getDays(); //Fetch raw data
 
 						renderSelectList($days,'month',$monthtoshow);
@@ -515,7 +515,7 @@ function renderSelectList($data,$type,$itemtoshow) {
 						
 						/* Set time range to render */
 						$toMonth = strtotime(date("Y-m-01"));
-						$fromMonth = strtotime(date("Y-m-d",$toMonth). ' - 1 year');					
+						$fromMonth = strtotime(date("Y-m-d",$toMonth). ' - 1 year');
 										   
 						$months = $database->getMonths(); //Fetch raw data
 						
@@ -573,5 +573,5 @@ function renderSelectList($data,$type,$itemtoshow) {
 			// Get the element with id="defaultOpen" and click on it
 			document.getElementById("defaultOpen").click();
 		</script>
-    </body>
+	</body>
 </html>
