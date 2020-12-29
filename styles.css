@@ -1,0 +1,112 @@
+body, html {
+	height: 100%;
+	margin: 0;
+	width: 100%;
+}
+
+div.ratio {
+	display: inline-block;
+	width: 100px;
+	height: 10px;
+	border: 1px solid #ddd;
+	background-color: #222;
+	overflow: hidden;
+}
+
+div.ratio > div {
+	height: 10px;
+	background-color: #5cb85c;
+}
+
+g.received > rect {
+	fill: #5cb85c !important;
+}
+
+g.sent > rect {
+	fill: #222 !important;
+}
+
+g.received > path {
+	stroke: #5cb85c !important;
+	fill: rgb(0,0,0,0) !important;
+}
+
+g.sent > path {
+	stroke: #222 !important;
+	fill: rgb(0,0,0,0) !important;
+}
+
+th.position,
+td.position {
+	width: 60px;
+}
+
+th.received,
+td.received,
+th.sent,
+td.sent,
+th.total,
+td.total,
+th.average-rate,
+td.average-rate {
+	width: 120px;
+	text-align: right;
+}
+
+th.ratio,
+td.ratio {
+	width: 120px;
+}
+
+table.datatype {
+	width:150px;
+}
+
+td.recdata {
+	background-color: #5cb85c;
+}
+
+td.sentdata {
+	background-color: #222;
+	color: white;
+}
+
+.theTooltip {
+	position: absolute;
+	background: #EEE;
+	-webkit-border-radius: 3px;
+	-moz-border-radius: 3px;
+	-ms-border-radius: 3px;
+	-o-border-radius: 3px;
+	border-radius: 3px;
+	padding: 5px;
+	-webkit-box-shadow: 0 1px 3px #000;
+	-moz-box-shadow: 0 1px 3px #000;
+	-ms-box-shadow: 0 1px 3px #000;
+	-o-box-shadow: 0 1px 3px #000;
+	box-shadow: 0 1px 3px #000;
+	border-collapse: separate;
+	display: none;
+}
+
+.tablink {
+	background-color: #555;
+	color: white;
+	float: left;
+	border: none;
+	outline: none;
+	cursor: pointer;
+	padding: 5px 5px;
+	font-size: 14px;
+	width: 25%;
+}
+
+.tablink:hover {
+	background-color: #777;
+}
+
+.tabcontent {
+	display: block;
+	padding: 40px 20px;
+	width: 100%;
+}

@@ -112,7 +112,7 @@ function getDataForTimePeriodandIntervalType($data, $type, $fromStamp, $toStamp)
 			$intervalStep='1 hour';
 			break;
 		case "day":
-			$xFormat='j/m';
+			$xFormat='j/n';
 			$typeFormat='Y-m-d';
 			$intervalStep='1 day';
 			break;
@@ -246,7 +246,6 @@ function renderDataTable($data, $type) {
 			$dateFormat='Y-m-d';
 			$dateFormat2='l, d F Y';
 			$classlink='day';
-			$top10position+=1;
 			break;
 	}
 	?>
@@ -290,6 +289,7 @@ function renderDataTable($data, $type) {
 					$diffDate->setTime(23, 59, 59);
 				}
 
+				$top10position+=1;
 				$endTimestamp = $diffDate->getTimestamp();
 				$range = $endTimestamp - $startTimestamp;				
 
@@ -374,121 +374,7 @@ function renderSelectList($data,$type,$itemtoshow) {
         <script type="text/javascript" src="xcharts/d3.min.js"></script>
         <script type="text/javascript" src="xcharts/xcharts.min.js"></script>
 		<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
-        <style type="text/css">
-
-			body, html {
-				height: 100%;
-				margin: 0;
-				width: 100%;
-			}
-		
-            div.ratio {
-                display: inline-block;
-                width: 100px;
-                height: 10px;
-                border: 1px solid #ddd;
-                background-color: #222;
-                overflow: hidden;
-            }
-
-            div.ratio > div {
-                height: 10px;
-                background-color: #5cb85c;
-            }
-
-            g.received > rect {
-                fill: #5cb85c !important;
-            }
-
-            g.sent > rect {
-                fill: #222 !important;
-            }
-
-            g.received > path {
-                stroke: #5cb85c !important;
-                fill: rgb(0,0,0,0) !important;
-            }
-
-            g.sent > path {
-                stroke: #222 !important;
-                fill: rgb(0,0,0,0) !important;
-            }
-
-            th.position,
-            td.position {
-                width: 60px;
-            }
-
-            th.received,
-            td.received,
-            th.sent,
-            td.sent,
-            th.total,
-            td.total,
-            th.average-rate,
-            td.average-rate {
-                width: 120px;
-                text-align: right;
-            }
-
-            th.ratio,
-            td.ratio {
-                width: 120px;
-            }
-            
-            table.datatype {
-                width:150px;
-            }
-            
-            td.recdata {
-                background-color: #5cb85c;
-            }
-
-            td.sentdata {
-                background-color: #222;
-                color: white;
-            }
-
-			.theTooltip {
-				position: absolute;
-				background: #EEE;
-				-webkit-border-radius: 3px;
-				-moz-border-radius: 3px;
-				-ms-border-radius: 3px;
-				-o-border-radius: 3px;
-				border-radius: 3px;
-				padding: 5px;
-				-webkit-box-shadow: 0 1px 3px #000;
-				-moz-box-shadow: 0 1px 3px #000;
-				-ms-box-shadow: 0 1px 3px #000;
-				-o-box-shadow: 0 1px 3px #000;
-				box-shadow: 0 1px 3px #000;
-				border-collapse: separate;
-				display: none;
-			}
-
-			.tablink {
-				background-color: #555;
-				color: white;
-				float: left;
-				border: none;
-				outline: none;
-				cursor: pointer;
-				padding: 5px 5px;
-				font-size: 14px;
-				width: 25%;
-			}
-
-			.tablink:hover {
-				background-color: #777;
-			}
-
-			.tabcontent {
-				display: block;
-				padding: 40px 20px;
-				width: 100%;
-			}
-        </style>
+		<link rel="stylesheet" href="styles.css">
     </head>
     <body>
         <form id="dataForm" action="index.php">
@@ -513,7 +399,7 @@ function renderSelectList($data,$type,$itemtoshow) {
                     <?php endif; ?>
                     
 					<BR/><BR/>
-					<h1>Network Traffic for <?php echo $database->getInterface()." - (" .$database->getNick().")" ?> </h1>
+					<h1>Network traffic for <?php echo $database->getInterface()." - (" .$database->getNick().")" ?> </h1>
                 </div>
 				<a href="index.php">Reset all selections</a><BR/>
                 <div>
@@ -610,15 +496,17 @@ function renderSelectList($data,$type,$itemtoshow) {
 						list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($days, 'day', $fromDate, $toDate); //Filter and pad data
 						
 						renderChart($receivedData, $sentData, 'daily', $daygraphtype, $showrec, $showsent); //Draw the diagram
-					
-						echo "<h2>Days</h2>";
-					
-						renderDataTable($database->getDays(),'day');
 					?>
 					Graph type: <select name="daygraphtype" onChange="this.form.submit();">
 						<option value="bar" <?php if($daygraphtype=='bar') { echo "selected"; } ?>>Bar</option>
 						<option value="line" <?php if($daygraphtype=='line') { echo "selected"; } ?>>Line</option>
 					</select>
+					<?php					
+						echo "<h2>Days</h2>";
+					
+						renderDataTable($database->getDays(),'day');
+					?>
+
 				</div>
 
 				<div id="months" class="tabcontent">
