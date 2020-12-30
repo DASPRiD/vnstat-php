@@ -32,7 +32,7 @@ if (array_key_exists('interfaces', $config) && !empty($config['interfaces'])) {
 /* Check if sent/received data should be rendered */
 $showsent = (array_key_exists('showsent', $_GET));
 $showrec = (array_key_exists('showrec', $_GET));
-if (!$showsent and !$showrec) {
+if (count($_GET) <= 1) {
 	$showsent = $showrec = True;
 }
 
@@ -319,19 +319,22 @@ function renderDataTable($data, $type) {
 	$type = day|month defining what to show as options in the list
 	$itemtoshow = timestamp of currently selected item (if any)
 */
-function renderSelectList($data,$type,$itemtoshow) {
-	echo "Show <select name=\"{$type}list\" onChange=\"document.getElementById('{$type}toshow').value=this.value;this.form.submit();\">";
+function renderChartSelects($data,$selectListType,$itemtoshow,$graphType) {
+	echo "<table width='100%'><tr><td>";
+	echo "Show: <select name=\"{$selectListType}list\" onChange=\"document.getElementById('{$selectListType}toshow').value=this.value;this.form.submit();\">";
 	
 	/* Set parameters for rendering and print base option */
-	switch($type) {
+	switch($selectListType) {
 		case 'day':
 			$dateFormat = 'Y-m-d';
 			$dateFormat2 = 'Y-m-d';
+			$graphDataType='hour';
 			echo '<option value="">Last 24 hours</option>';
 			break;
 		case 'month':
 			$dateFormat = 'F Y';
 			$dateFormat2 = 'Y-m';
+			$graphDataType='day';
 			echo '<option value="">Last month</option>';
 			break;
 	}
@@ -357,8 +360,16 @@ function renderSelectList($data,$type,$itemtoshow) {
 		echo '>'.$date.'</option>';
 	}
 	echo '</select>';
+	echo "</td><td align='right'>"; ?>
+		Graph type: <select name="<?=$graphDataType?>graphtype" onChange="this.form.submit();">
+	<option value="bar" <?php if($graphType=='bar') { echo "selected"; } ?>>Bar</option>
+		<option value="line" <?php if($graphType=='line') { echo "selected"; } ?>>Line</option>
+	</select><?php
+	echo "</td></tr></table>";
+	echo "<BR/>";
+	echo $graphType;
+	echo "<BR/>";
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -401,25 +412,27 @@ function renderSelectList($data,$type,$itemtoshow) {
 					<BR/><BR/>
 					<h1>Network traffic for <?php echo $database->getInterface()." - (" .$database->getNick().")" ?> </h1>
 				</div>
-				<a href="index.php">Reset all selections</a><BR/>
 				<div>
-					<table class="table table-bordered datatype">
-							<tr>
-								<td class="recdata"><input type="checkbox" name="showrec" <?php echo ($showrec) ? "checked" :""; ?> onchange="this.form.submit();"/></td>
-								<td class="recdata">Received data</td>
-							</tr>
-							<tr>
-								<td class="sentdata"><input type="checkbox" name="showsent" <?php echo ($showsent) ? "checked" :""; ?> onchange="this.form.submit();"/></td>
-								<td class="sentdata">Sent data</td>
-							</tr>
-					</table>
+					<?php
+					/*
+					Inte hemma riktigt än. Måste ändra så att värdet sparas i knappen och när det inte är cehckbox skicaks det alltid med vilket betyder att jag mäste ändra på iffasatsen lite här och i rendergraph.
+					
+					*/
+					?>
+					<button type="button"  title="Resets all diagrams and selections" class="reset" onClick="document.location='index.php?tabtoshow='+document.getElementById('tabtoshow').value;">Reset all</button>
+					<button type="submit" title="Toggles showing received data in diagrams." class="received <?=($showrec) ? "selected" :""; ?>" onClick="document.getElementById('showrec').checked=!document.getElementById('showrec').checked;">Show received</button>
+					<button type="submit" title="Toggles showing sent data in diagrams." class="sent <?=($showsent) ? "selected" :""; ?>"  onClick="document.getElementById('showsent').checked=!document.getElementById('showsent').checked;">Show sent</button>
+					<input style="display:none;" type="checkbox" id="showrec" name="showrec" <?php echo ($showrec) ? "checked" :""; ?>/>
+					<input style="display:none;" type="checkbox" id="showsent" name="showsent" <?php echo ($showsent) ? "checked" :""; ?>/>
+
 				</div>
-				
 				<BR/>
-				<button typ="button" class="tablink" onclick="openPage('hours',this, '#5cb85c');return(false);"<?=($tabtoshow=='hours') ? 'id="defaultOpen"' : '' ?>>Hours</button>
-				<button typ="button"  class="tablink" onclick="openPage('days', this, '#5cb85c');return(false);"<?=($tabtoshow=='days') ? 'id="defaultOpen"' : '' ?>>Days</button>
-				<button typ="button"  class="tablink" onclick="openPage('months', this, '#5cb85c');return(false);"<?=($tabtoshow=='months') ? 'id="defaultOpen"' : '' ?>>Months</button>
-				<button typ="button"  class="tablink" onclick="openPage('top10', this, '#5cb85c');return(false);"<?=($tabtoshow=='top10') ? 'id="defaultOpen"' : '' ?>>Top 10</button>
+				<div>
+					<button type="button" class="tablink" onclick="openPage('hours',this, '#5cb85c');"<?=($tabtoshow=='hours') ? 'id="defaultOpen"' : '' ?>>Hours</button>
+					<button type="button" class="tablink" onclick="openPage('days', this, '#5cb85c');"<?=($tabtoshow=='days') ? 'id="defaultOpen"' : '' ?>>Days</button>
+					<button type="button" class="tablink" onclick="openPage('months', this, '#5cb85c');"<?=($tabtoshow=='months') ? 'id="defaultOpen"' : '' ?>>Months</button>
+					<button type="button" class="tablink" onclick="openPage('top10', this, '#5cb85c');"<?=($tabtoshow=='top10') ? 'id="defaultOpen"' : '' ?>>Top 10</button>
+				</dv>
 				<div id="hours" class="tabcontent">
 					<?php
 						/* Print header */
@@ -430,37 +443,39 @@ function renderSelectList($data,$type,$itemtoshow) {
 							echo '<h2> Hourly traffic for last 24 hours</h2>';
 							
 						}
+						if ($showrec or $showsent) {
+							/* Set time range to render */
+							if($daygiven) {
+								$toTime = strtotime(date("Y-m-d H:00:00",$daytoshow). ' + 1 day');
+							} else {
+								$toTime = strtotime(date("Y-m-d H:00:00"));
+							}
 
-						/* Set time range to render */
-						if($daygiven) {
-							$toTime = strtotime(date("Y-m-d H:00:00",$daytoshow). ' + 1 day');
+							$fromTime = strtotime(date("Y-m-d H:00:00",$toTime). ' - 1 day');
+
+							if(!$daygiven) {
+								$fromTime=strtotime(date("Y-m-d H:00:00",$fromTime).' + 1 hour');
+							} else {
+								$toTime=strtotime(date("Y-m-d H:00:00",$toTime).' - 1 hour');
+							}
+
+							$hours = $database->getHours(); //Fetch raw data
+
+							
+							renderChartSelects($hours,'day',$daytoshow,$hourgraphtype);
+							echo "<BR/><BR/>";
+
+							
+							list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($hours, 'hour', $fromTime, $toTime); //Filter and pad the data
+
+							
+							renderChart($receivedData, $sentData, 'hourly', $hourgraphtype, $showrec, $showsent); //Draw the diagram
+
+							
 						} else {
-							$toTime = strtotime(date("Y-m-d H:00:00"));
+							echo '<em>Select either received or sent data to show diagram.</em>';
 						}
-
-						$fromTime = strtotime(date("Y-m-d H:00:00",$toTime). ' - 1 day');
-
-						if(!$daygiven) {
-							$fromTime=strtotime(date("Y-m-d H:00:00",$fromTime).' + 1 hour');
-						} else {
-							$toTime=strtotime(date("Y-m-d H:00:00",$toTime).' - 1 hour');
-						}
-
-						$hours = $database->getHours(); //Fetch raw data
-
-						
-						renderSelectList($hours,'day',$daytoshow);
-						echo "<BR/><BR/>";
-						
-						list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($hours, 'hour', $fromTime, $toTime); //Filter and pad the data
-						
-						renderChart($receivedData, $sentData, 'hourly', $hourgraphtype, $showrec, $showsent); //Draw the diagram
-
-					?>
-					Graph type: <select name="hourgraphtype" onChange="this.form.submit();">
-						<option value="bar" <?php if($hourgraphtype=='bar') { echo "selected"; } ?>>Bar</option>
-						<option value="line" <?php if($hourgraphtype=='line') { echo "selected"; } ?>>Line</option>
-					</select>
+						?>
 				</div>
 				<div id="days" class="tabcontent">
 					<?php
@@ -472,36 +487,37 @@ function renderSelectList($data,$type,$itemtoshow) {
 							echo '<h2>Daily traffic for latest month</h2>';
 						}
 
-						/* Set time range to render */
-						if($monthgiven) {
-							$toDate = strtotime(date("Y-m-01",$monthtoshow). ' + 1 month');
+						if ($showrec or $showsent) {
+							/* Set time range to render */
+							if($monthgiven) {
+								$toDate = strtotime(date("Y-m-01",$monthtoshow). ' + 1 month');
+							} else {
+								$toDate = strtotime(date("Y-m-d"));
+							}
+							
+							$fromDate = strtotime(date("Y-m-d",$toDate). ' - 1 month');
+							
+							if(!$monthgiven) {
+								$fromDate=strtotime(date("Y-m-d",$fromDate).' + 1 day');
+							} else {
+								$toDate=strtotime(date("Y-m-d",$toDate).' - 1 day');
+							}
+
+							$days = $database->getDays(); //Fetch raw data
+							
+						
+							renderChartSelects($days,'month',$monthtoshow,$daygraphtype);
+							echo "<BR/>";
+
+							
+							list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($days, 'day', $fromDate, $toDate); //Filter and pad data
+							
+							renderChart($receivedData, $sentData, 'daily', $daygraphtype, $showrec, $showsent); //Draw the diagram
+
 						} else {
-							$toDate = strtotime(date("Y-m-d"));
+							echo '<em>Select either received or sent data to show diagram.</em>';
 						}
 						
-						$fromDate = strtotime(date("Y-m-d",$toDate). ' - 1 month');
-						
-						if(!$monthgiven) {
-							$fromDate=strtotime(date("Y-m-d",$fromDate).' + 1 day');
-						} else {
-							$toDate=strtotime(date("Y-m-d",$toDate).' - 1 day');
-						}
-
-						$days = $database->getDays(); //Fetch raw data
-
-						renderSelectList($days,'month',$monthtoshow);
-						echo "<BR/><BR/>";
-
-						
-						list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($days, 'day', $fromDate, $toDate); //Filter and pad data
-						
-						renderChart($receivedData, $sentData, 'daily', $daygraphtype, $showrec, $showsent); //Draw the diagram
-					?>
-					Graph type: <select name="daygraphtype" onChange="this.form.submit();">
-						<option value="bar" <?php if($daygraphtype=='bar') { echo "selected"; } ?>>Bar</option>
-						<option value="line" <?php if($daygraphtype=='line') { echo "selected"; } ?>>Line</option>
-					</select>
-					<?php					
 						echo "<h2>Days</h2>";
 					
 						renderDataTable($database->getDays(),'day');
@@ -511,22 +527,23 @@ function renderSelectList($data,$type,$itemtoshow) {
 
 				<div id="months" class="tabcontent">
 					<h2>Monthly traffic for latest 12 months</h2>
+					<BR/>
 					<?php
-						
-						/* Set time range to render */
-						$toMonth = strtotime(date("Y-m-01"));
-						$fromMonth = strtotime(date("Y-m-d",$toMonth). ' - 1 year');
-										   
-						$months = $database->getMonths(); //Fetch raw data
-						
-						list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($months, 'month', $fromMonth, $toMonth); //Filter and pad data
-						
-						renderChart($receivedData, $sentData, 'monthly', $monthgraphtype, $showrec, $showsent); //Draw the diagram
+						if ($showrec or $showsent) {						
+							/* Set time range to render */
+							$toMonth = strtotime(date("Y-m-01"));
+							$fromMonth = strtotime(date("Y-m-d",$toMonth). ' - 1 year');
+											   
+							$months = $database->getMonths(); //Fetch raw data
+							
+							list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($months, 'month', $fromMonth, $toMonth); //Filter and pad data
+							
+							renderChart($receivedData, $sentData, 'monthly', $monthgraphtype, $showrec, $showsent); //Draw the diagram
+
+					} else {
+						echo '<em>Select either received or sent data to show diagram.</em>';
+					}	
 					?>
-					Graph type: <select name="monthgraphtype" onChange="this.form.submit();">
-						<option value="bar" <?php if($monthgraphtype=='bar') { echo "selected"; } ?>>Bar</option>
-						<option value="line" <?php if($monthgraphtype=='line') { echo "selected"; } ?>>Line</option>
-					</select>
 					<BR/>   
 					
 					<h2>Months</h2>
@@ -547,7 +564,6 @@ function renderSelectList($data,$type,$itemtoshow) {
 			document.body.appendChild(tt);
 			
 			function openPage(pageName, elmnt, color) {
-
 				document.getElementById('tabtoshow').value=pageName;
 
 				// Hide all elements with class="tabcontent" by default */
@@ -568,10 +584,21 @@ function renderSelectList($data,$type,$itemtoshow) {
 
 				// Add the specific color to the button used to open the tab content
 				elmnt.style.backgroundColor = color;
+
 			}
 
 			// Get the element with id="defaultOpen" and click on it
 			document.getElementById("defaultOpen").click();
+			
+			/* Scroll to right place */
+	        $(window).scroll(function () {
+				sessionStorage.scrollTop = $(this).scrollTop();
+			});
+			$(document).ready(function () {
+				if (sessionStorage.scrollTop != "undefined") {
+					$(window).scrollTop(sessionStorage.scrollTop);
+				}
+			});
 		</script>
 	</body>
 </html>
