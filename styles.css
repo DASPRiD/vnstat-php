@@ -1,38 +1,49 @@
+:root {
+  --theme-primary-color: #5cb85c;
+  --theme-primary-active-color: #3e943e;
+  --theme-secondary-color: #222;
+  --theme-background-color: #FFF;
+  --theme-light-color: #EEE;
+  --theme-dark-color: #222;
+}
+
 body, html {
 	height: 100%;
 	margin: 0;
 	width: 100%;
+	background-color: var(--theme-background-color);
+	color: var(--theme-dark-color);
 }
 
 div.ratio {
 	display: inline-block;
 	width: 100px;
 	height: 10px;
-	border: 1px solid #ddd;
-	background-color: #222;
+	border: 1px solid var(--theme-light-color);
+	background-color: var(--theme-secondary-color);
 	overflow: hidden;
 }
 
 div.ratio > div {
 	height: 10px;
-	background-color: #5cb85c;
+	background-color: var(--theme-primary-color);
 }
 
 g.received > rect {
-	fill: #5cb85c !important;
+	fill: var(--theme-primary-color) !important;
 }
 
 g.sent > rect {
-	fill: #222 !important;
+	fill:var(--theme-secondary-color) !important;
 }
 
 g.received > path {
-	stroke: #5cb85c !important;
+	stroke: var(--theme-primary-color) !important;
 	fill: rgb(0,0,0,0) !important;
 }
 
 g.sent > path {
-	stroke: #222 !important;
+	stroke: var(--theme-secondary-color) !important;
 	fill: rgb(0,0,0,0) !important;
 }
 
@@ -63,17 +74,18 @@ table.datatype {
 }
 
 td.recdata {
-	background-color: #5cb85c;
+	background-color: var(--theme-primary-color);
+	color: var(--theme-dark-color);
 }
 
 td.sentdata {
-	background-color: #222;
-	color: white;
+	background-color: var(--theme-secondary-color);
+	color: var(--theme-light-color);
 }
 
 .theTooltip {
 	position: absolute;
-	background: #EEE;
+	background: var(--theme-light-color);
 	-webkit-border-radius: 3px;
 	-moz-border-radius: 3px;
 	-ms-border-radius: 3px;
@@ -89,7 +101,9 @@ td.sentdata {
 	display: none;
 }
 
-button.reset, button.received, button.sent {
+button.reset, 
+button.received, 
+button.sent {
 	margin: 5px;
 	padding: 3px 3px;
 	font-size: 12px;
@@ -97,22 +111,23 @@ button.reset, button.received, button.sent {
 }
 
 
-button.reset, button.received, button.sent {
+button.reset, 
+button.received, 
+button.sent {
 	margin: 5px;
 	width: 140px;
 	font-family: 'Roboto', sans-serif;
 	font-size: 12px;
 	text-transform: uppercase;
-	//letter-spacing: 1.5px;
-	//font-weight: 500;
-	color: #000;
+	font-weight: 500;
+	color: var(--theme-dark-color);
 	background-color: #fff;
 	border: none;
 	transition: all 0.3s ease 0s;
 	cursor: pointer;
 	outline: none;
 	box-shadow: 0 3px 1px -2px rgba(0,0,0,.2), 0 2px 2px 0 rgba(0,0,0,.14), 0 1px 5px 0 rgba(0,0,0,.12);
-	min-width: 64px;
+	min-width: 54px;
 	line-height: 30px;
 	padding: 0 10px;
 	border-radius: 4px;
@@ -124,29 +139,36 @@ button.reset, button.received, button.sent {
     text-align: center;
 }
 
-button.reset:hover, button.received:hover, button.sent:hover  {
+button.reset:hover, 
+button.received:hover, 
+button.sent:hover  {
 	box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.4), 0 2px 2px 0 rgba(0,0,0,.14), 0 1px 5px 0 rgba(0,0,0,.12);
 }
 
-button.reset:active, button.received:active, button.sent:active {
-	background-color: #3e943e;
+button.reset:active, 
+button.received:active, 
+button.sent:active {
+	background-color: var(--theme-primary-active-color);
 	box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.4), 0 2px 2px 0 rgba(0,0,0,.14), 0 1px 5px 0 rgba(0,0,0,.12);
 }
 
 button.selected {
-	background-color: #5cb85c;
+	background-color: var(--theme-primary-color);
 }
 
 .tablink {
+	margin: 1px;
+	border-top-left-radius: 8px;
+	border-top-right-radius: 8px;
 	background-color: #555;
-	color: white;
+	color: var(--theme-light-color);
 	float: left;
 	border: none;
 	outline: none;
 	cursor: pointer;
 	padding: 5px 5px;
 	font-size: 14px;
-	width: 25%;
+	width: calc(25% - 2px);
 }
 
 .tablink:hover {
