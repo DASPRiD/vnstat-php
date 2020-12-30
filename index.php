@@ -1,7 +1,7 @@
 <?php
 /* 
 	TODO:
-	- Lift style to css file
+	- Add tab that can compare two data sets (e.g. received for two days) in one table
 */
 
 /* Print errors for debug purposes */
@@ -47,6 +47,10 @@ $daygiven = (array_key_exists('daytoshow', $_GET) and $_GET['daytoshow'] != '') 
 
 $monthtoshow = (array_key_exists('monthtoshow', $_GET) ? $_GET['monthtoshow'] : '');
 $monthgiven = (array_key_exists('monthtoshow', $_GET) and $_GET['monthtoshow'] != '') ? True : False;
+
+$yeartoshow = (array_key_exists('yeartoshow', $_GET) ? $_GET['yeartoshow'] : '');
+$yeargiven = (array_key_exists('yeartoshow', $_GET) and $_GET['yeartoshow'] != '') ? True : False;
+
 
 /* Set tab to show */
 $tabtoshow = (array_key_exists('tabtoshow', $_GET) ? $_GET['tabtoshow'] : 'hours');
@@ -337,6 +341,12 @@ function renderChartSelects($data,$selectListType,$itemtoshow,$graphType) {
 			$graphDataType='day';
 			echo '<option value="">Last month</option>';
 			break;
+		case 'year':
+			$dateFormat = 'Y';
+			$dateFormat2 = 'Y';
+			$graphDataType='month';
+			echo '<option value="">Last 12 months</option>';
+			break;
 	}
 
 	$options = [];
@@ -366,9 +376,6 @@ function renderChartSelects($data,$selectListType,$itemtoshow,$graphType) {
 		<option value="line" <?php if($graphType=='line') { echo "selected"; } ?>>Line</option>
 	</select><?php
 	echo "</td></tr></table>";
-	echo "<BR/>";
-	echo $graphType;
-	echo "<BR/>";
 }
 ?>
 <!DOCTYPE html>
@@ -391,6 +398,7 @@ function renderChartSelects($data,$selectListType,$itemtoshow,$graphType) {
 		<form id="dataForm" action="index.php">
 			<input type="hidden" id="daytoshow" name="daytoshow" value="<?php echo $daytoshow ?>"/>
 			<input type="hidden" id="monthtoshow" name="monthtoshow" value="<?php echo $monthtoshow ?>"/>
+			<input type="hidden" id="yeartoshow" name="yeartoshow" value="<?php echo $yeartoshow ?>"/>
 			<input type="hidden" id="tabtoshow" name="tabtoshow" value="<?php echo $tabtoshow ?>"/>
 			<div class="container">
 				<div class="page-header">
@@ -428,11 +436,11 @@ function renderChartSelects($data,$selectListType,$itemtoshow,$graphType) {
 				</div>
 				<BR/>
 				<div>
-					<button type="button" class="tablink" onclick="openPage('hours',this, '#5cb85c');"<?=($tabtoshow=='hours') ? 'id="defaultOpen"' : '' ?>>Hours</button>
-					<button type="button" class="tablink" onclick="openPage('days', this, '#5cb85c');"<?=($tabtoshow=='days') ? 'id="defaultOpen"' : '' ?>>Days</button>
-					<button type="button" class="tablink" onclick="openPage('months', this, '#5cb85c');"<?=($tabtoshow=='months') ? 'id="defaultOpen"' : '' ?>>Months</button>
-					<button type="button" class="tablink" onclick="openPage('top10', this, '#5cb85c');"<?=($tabtoshow=='top10') ? 'id="defaultOpen"' : '' ?>>Top 10</button>
-				</dv>
+					<button type="button" class="tablink" onclick="openPage('hours',this);"<?=($tabtoshow=='hours') ? 'id="defaultOpen"' : '' ?>>Hours</button>
+					<button type="button" class="tablink" onclick="openPage('days', this);"<?=($tabtoshow=='days') ? 'id="defaultOpen"' : '' ?>>Days</button>
+					<button type="button" class="tablink" onclick="openPage('months', this);"<?=($tabtoshow=='months') ? 'id="defaultOpen"' : '' ?>>Months</button>
+					<button type="button" class="tablink" onclick="openPage('top10', this);"<?=($tabtoshow=='top10') ? 'id="defaultOpen"' : '' ?>>Top 10</button>
+				</div>
 				<div id="hours" class="tabcontent">
 					<?php
 						/* Print header */
@@ -460,15 +468,10 @@ function renderChartSelects($data,$selectListType,$itemtoshow,$graphType) {
 							}
 
 							$hours = $database->getHours(); //Fetch raw data
-
-							
-							renderChartSelects($hours,'day',$daytoshow,$hourgraphtype);
-							echo "<BR/><BR/>";
-
 							
 							list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($hours, 'hour', $fromTime, $toTime); //Filter and pad the data
-
-							
+							renderChartSelects($hours,'day',$daytoshow,$hourgraphtype);
+							echo "<BR/>";
 							renderChart($receivedData, $sentData, 'hourly', $hourgraphtype, $showrec, $showsent); //Draw the diagram
 
 							
@@ -505,13 +508,9 @@ function renderChartSelects($data,$selectListType,$itemtoshow,$graphType) {
 
 							$days = $database->getDays(); //Fetch raw data
 							
-						
+							list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($days, 'day', $fromDate, $toDate); //Filter and pad data
 							renderChartSelects($days,'month',$monthtoshow,$daygraphtype);
 							echo "<BR/>";
-
-							
-							list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($days, 'day', $fromDate, $toDate); //Filter and pad data
-							
 							renderChart($receivedData, $sentData, 'daily', $daygraphtype, $showrec, $showsent); //Draw the diagram
 
 						} else {
@@ -526,28 +525,41 @@ function renderChartSelects($data,$selectListType,$itemtoshow,$graphType) {
 				</div>
 
 				<div id="months" class="tabcontent">
-					<h2>Monthly traffic for latest 12 months</h2>
-					<BR/>
 					<?php
+					if ($yeargiven) {
+							echo '<h2>Monthly traffic for '.date("Y",$yeartoshow).'</h2>';
+						} else {
+							echo '<h2>Monthly traffic for last 12 months</h2>';
+						}
+					
 						if ($showrec or $showsent) {						
 							/* Set time range to render */
-							$toMonth = strtotime(date("Y-m-01"));
-							$fromMonth = strtotime(date("Y-m-d",$toMonth). ' - 1 year');
+							if($yeargiven) {
+								$toMonth = strtotime(date("Y-01-01",$yeartoshow).' + 1 year' ); //
+							} else {
+								$toMonth = strtotime(date("Y-m-01"));
+							}
+							
+							$fromMonth = strtotime(date("Y-m-01",$toMonth). ' - 1 year');
+							
+							if(!$yeargiven) {
+								$fromMonth=strtotime(date("Y-m-01",$fromMonth).' + 1 month'); //
+							} else {
+								$toMonth=strtotime(date("Y-m-01",$toMonth).' - 1 month'); //
+							}
 											   
 							$months = $database->getMonths(); //Fetch raw data
 							
 							list($receivedData, $sentData) = getDataForTimePeriodandIntervalType($months, 'month', $fromMonth, $toMonth); //Filter and pad data
-							
+							renderChartSelects($months,'year',$yeartoshow,$monthgraphtype);
+							echo "<BR/>";
 							renderChart($receivedData, $sentData, 'monthly', $monthgraphtype, $showrec, $showsent); //Draw the diagram
 
 					} else {
 						echo '<em>Select either received or sent data to show diagram.</em>';
 					}	
-					?>
-					<BR/>   
-					
-					<h2>Months</h2>
-					<?php renderDataTable($database->getMonths(),'month'); ?>
+					echo "<h2>Months</h2>";
+					renderDataTable($database->getMonths(),'month'); ?>
 				</div>
 				<div id="top10" class="tabcontent">
 
@@ -563,7 +575,7 @@ function renderChartSelects($data,$selectListType,$itemtoshow,$graphType) {
 			tt.className = 'theTooltip';
 			document.body.appendChild(tt);
 			
-			function openPage(pageName, elmnt, color) {
+			function openPage(pageName, elmnt) {
 				document.getElementById('tabtoshow').value=pageName;
 
 				// Hide all elements with class="tabcontent" by default */
@@ -583,7 +595,7 @@ function renderChartSelects($data,$selectListType,$itemtoshow,$graphType) {
 				document.getElementById(pageName).style.display = "block";
 
 				// Add the specific color to the button used to open the tab content
-				elmnt.style.backgroundColor = color;
+				elmnt.style.backgroundColor = '#5cb85c';
 
 			}
 
