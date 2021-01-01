@@ -1,10 +1,11 @@
 :root {
-  --theme-primary-color: #5cb85c;
-  --theme-primary-active-color: #3e943e;
-  --theme-secondary-color: #222;
-  --theme-background-color: #FFF;
-  --theme-light-color: #EEE;
-  --theme-dark-color: #222;
+	--theme-primary-color: #5cb85c;
+	--theme-primary-active-color: #3e943e;
+	--theme-secondary-color: #222;
+	--theme-secondary-active-color: #444;
+	--theme-background-color: #FFF;
+	--theme-light-color: #EEE;
+	--theme-dark-color: #222;
 }
 
 body, html {
@@ -29,21 +30,41 @@ div.ratio > div {
 	background-color: var(--theme-primary-color);
 }
 
-g.received > rect {
+g.received > rect, g.compare0 > rect {
 	fill: var(--theme-primary-color) !important;
 }
 
-g.sent > rect {
+g.sent > rect, g.compare1 > rect {
 	fill:var(--theme-secondary-color) !important;
 }
 
-g.received > path {
+g.compare2 rect {
+	fill: blue !important;
+}
+
+g.compare3 > rect {
+	fill: red !important;
+}
+
+
+
+g.received > path, g.compare0 > path {
 	stroke: var(--theme-primary-color) !important;
 	fill: rgb(0,0,0,0) !important;
 }
 
-g.sent > path {
+g.sent > path, g.compare1 > path {
 	stroke: var(--theme-secondary-color) !important;
+	fill: rgb(0,0,0,0) !important;
+}
+
+g.compare2 > path {
+	stroke: blue !important;
+	fill: rgb(0,0,0,0) !important;
+}
+
+g.compare3 > path {
+	stroke: red !important;
 	fill: rgb(0,0,0,0) !important;
 }
 
@@ -69,19 +90,7 @@ td.ratio {
 	width: 120px;
 }
 
-table.datatype {
-	width:150px;
-}
 
-td.recdata {
-	background-color: var(--theme-primary-color);
-	color: var(--theme-dark-color);
-}
-
-td.sentdata {
-	background-color: var(--theme-secondary-color);
-	color: var(--theme-light-color);
-}
 
 .theTooltip {
 	position: absolute;
@@ -101,9 +110,7 @@ td.sentdata {
 	display: none;
 }
 
-button.reset, 
-button.received, 
-button.sent {
+button.normal {
 	margin: 5px;
 	padding: 3px 3px;
 	font-size: 12px;
@@ -111,9 +118,7 @@ button.sent {
 }
 
 
-button.reset, 
-button.received, 
-button.sent {
+button.normal {
 	margin: 5px;
 	width: 140px;
 	font-family: 'Roboto', sans-serif;
@@ -139,21 +144,24 @@ button.sent {
     text-align: center;
 }
 
-button.reset:hover, 
-button.received:hover, 
-button.sent:hover  {
+button.normal:hover {
 	box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.4), 0 2px 2px 0 rgba(0,0,0,.14), 0 1px 5px 0 rgba(0,0,0,.12);
 }
 
-button.reset:active, 
-button.received:active, 
-button.sent:active {
+button.normal:active {
 	background-color: var(--theme-primary-active-color);
 	box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.4), 0 2px 2px 0 rgba(0,0,0,.14), 0 1px 5px 0 rgba(0,0,0,.12);
 }
 
 button.selected {
 	background-color: var(--theme-primary-color);
+}
+
+button.disabled, button.disabled:hover, button.active {
+	box-shadow: 0 3px 1px -2px rgba(0,0,0,.2), 0 2px 2px 0 rgba(0,0,0,.14), 0 1px 5px 0 rgba(0,0,0,.12);
+	background-color: #CCC;
+	color: #555;
+	cursor: default;
 }
 
 .tablink {
@@ -168,7 +176,7 @@ button.selected {
 	cursor: pointer;
 	padding: 5px 5px;
 	font-size: 14px;
-	width: calc(25% - 2px);
+	width: calc(20% - 3px);
 }
 
 .tablink:hover {
@@ -179,4 +187,43 @@ button.selected {
 	display: block;
 	padding: 40px 20px;
 	width: 100%;
+}
+
+.comparetypelist {
+	padding: 2px;
+	margin: 5px;
+}
+
+.box {
+	display:inline-block;
+	width: 10px;
+	height: 10px;
+
+}
+
+.receivedBox, .compare0 {
+	background: var(--theme-primary-color)  !important;
+}
+
+.sentBox, .compare1 {
+	background: var(--theme-secondary-color)  !important;
+}
+
+.compare2 {
+	background: blue  !important;
+}
+
+.compare3 {
+	background: red  !important;
+}
+
+.explanation {
+	color: var(--theme-dark-color);
+	font-size: 10px;
+	width: 100%;
+}
+
+.explanationitem {
+	display:inline-block;
+	margin: 5px;
 }
