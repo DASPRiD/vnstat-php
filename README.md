@@ -13,4 +13,4 @@ You can easily change the used interface or add more by copying the
 
 ## Example output
 
-![](https://github.com/dasprid/vnstat-php/blob/master/example.png)
+![](https://github.com/logicalshrapnel/vnstat-php/blob/master/example.png)
