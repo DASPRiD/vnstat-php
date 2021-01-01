@@ -500,12 +500,19 @@ function renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$date
 					<h1>Network traffic for <?php echo $database->getInterface()." - (" .$database->getNick().")" ?> </h1>
 				</div>
 				<div id="header-buttons">
-					<button type="button"  title="Resets all diagrams and selections" class="normal" onClick="document.location='index.php?tabtoshow='+document.getElementById('tabtoshow').value;">Reset all</button>
-					<button type="submit" title="Toggles showing received data in diagrams." class="normal <?=($showrec) ? "selected" :""; ?>" onClick="document.getElementById('showrec').checked=!document.getElementById('showrec').checked;">Show received</button>
-					<button type="submit" title="Toggles showing sent data in diagrams." class="normal <?=($showsent) ? "selected" :""; ?>"  onClick="document.getElementById('showsent').checked=!document.getElementById('showsent').checked;">Show sent</button>
-					<input style="display:none;" type="checkbox" id="showrec" name="showrec" <?php echo ($showrec) ? "checked" :""; ?>/>
-					<input style="display:none;" type="checkbox" id="showsent" name="showsent" <?php echo ($showsent) ? "checked" :""; ?>/>
-
+					<table width="100%">
+						<tr>
+							<td>
+								<button type="submit" title="Toggles showing received data in diagrams." class="normal <?=($showrec) ? "selected" :""; ?>" onClick="document.getElementById('showrec').checked=!document.getElementById('showrec').checked;">Show received</button>
+								<button type="submit" title="Toggles showing sent data in diagrams." class="normal <?=($showsent) ? "selected" :""; ?>"  onClick="document.getElementById('showsent').checked=!document.getElementById('showsent').checked;">Show sent</button>
+								<input style="display:none;" type="checkbox" id="showrec" name="showrec" <?php echo ($showrec) ? "checked" :""; ?>/>
+								<input style="display:none;" type="checkbox" id="showsent" name="showsent" <?php echo ($showsent) ? "checked" :""; ?>/>
+							</td>
+							<td align="right">
+								<button type="button"  title="Resets all diagrams and selections" class="normal" onClick="document.location='index.php?tabtoshow='+document.getElementById('tabtoshow').value;">Reset all</button>
+							</td>
+						</tr>
+					</table>
 				</div>
 				<BR/>
 				<div id="tabs">
