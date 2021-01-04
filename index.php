@@ -299,6 +299,7 @@ function renderDataTable($data, $type) {
 			$dateFormat='Y-m-d';
 			$dateFormat2='l, d F Y';
 			$classlink='day';
+			$tabName = 'hours';
 			break;
 	}
 	?>
