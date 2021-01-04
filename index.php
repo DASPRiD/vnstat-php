@@ -223,6 +223,31 @@ function renderChart($allData, $chartName, $graphtype, $showrec, $showsent) {
 				"mouseout": function (x) {
 					$(tt).hide();
 				}
+				<?php 
+				if($chartName=="daily" or $chartName=="monthly") {
+					switch($chartName) {
+						case "daily":
+							$itemType='day';
+							break;
+						case "monthly":
+							$itemType='month';
+							break;
+					}?>
+					,
+					"click": function (d) {
+						switch(document.getElementById('tabtoshow').value) {
+							case 'days':
+								document.getElementById('tabtoshow').value='hours';
+								break;
+							case 'months':
+								document.getElementById('tabtoshow').value='days';
+								break;
+						}
+						document.getElementById(<?="'".$itemType."toshow'"?>).value=d.timestamp;
+						document.getElementById('dataForm').submit();
+					}
+				<?php 
+				} ?>
 			}
 		);
 	</script>
