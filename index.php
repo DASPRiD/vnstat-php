@@ -28,8 +28,9 @@ if (array_key_exists('interfaces', $config) && !empty($config['interfaces'])) {
 /* Check if sent/received data should be rendered */
 $showsent = (array_key_exists('showsent', $_GET));
 $showrec = (array_key_exists('showrec', $_GET));
+$twoAxes= (array_key_exists('twoAxes', $_GET));
 if (count($_GET) <= 1) {
-	$showsent = $showrec = True;
+	$showsent = $showrec = $twoAxes = True;
 }
 
 /* Set  graph formats */
@@ -59,8 +60,7 @@ $tabtoshow = (array_key_exists('tabtoshow', $_GET) ? $_GET['tabtoshow'] : 'hours
 
 $database = new Vnstat\Database($interface);
 
-function formatBytes($bytes)
-{
+function formatBytes($bytes) {
 	$units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
 	$pow   = floor(($bytes ? log($bytes) : 0) / log(1024));
 	$pow   = min($pow, count($units) - 1);
@@ -69,8 +69,7 @@ function formatBytes($bytes)
 	return round($bytes) . ' ' . $units[$pow];
 }
 
-function formatBitrate($bytes, $seconds)
-{
+function formatBitrate($bytes, $seconds) {
 	$units = ['bit', 'kbit', 'mbit', 'gbit', 'tbit'];
 	$bits  = ($bytes * 8) / $seconds;
 	$pow   = floor(($bits ? log($bits) : 0) / log(1024));
@@ -80,8 +79,7 @@ function formatBitrate($bytes, $seconds)
 	return round($bits, 2) . ' ' . $units[$pow] . '/s';
 }
 
-function formatRatio($bytesReceived, $bytesSent)
-{
+function formatRatio($bytesReceived, $bytesSent) {
 	$total = $bytesReceived + $bytesSent;
 	$percentageReceived = ($bytesReceived / $total * 100);
 
@@ -92,8 +90,7 @@ function formatRatio($bytesReceived, $bytesSent)
 }
 
 /* Loops through a multidimensional array and checks if a key has a specific value */
-function find_key_value($array, $key, $val)
-{
+function find_key_value($array, $key, $val) {
 	foreach ($array as $item)
 	{
 		if (is_array($item) && find_key_value($item, $key, $val)) return true;
@@ -108,23 +105,25 @@ function find_key_value($array, $key, $val)
 		$fromStamp = timestamp for beginning of range
 		$toStamp = timestamp for end of range
 */
-function filterDataForTimePeriodandIntervalType($data, $type, $fromStamp, $toStamp) 
-{
+function filterDataForTimePeriodandIntervalType($data, $type, $fromStamp, $toStamp) {
 	/* Set configuration */
 	switch ($type) {
 		case "hour":
 			$xFormat='G';
 			$typeFormat='Y-m-d H:i:s';
 			$intervalStep='1 hour';
+			$legendFormat="M jS Y";	
 			break;
 		case "day":
-			$xFormat='j/n';
+			$xFormat='M jS';
 			$typeFormat='Y-m-d';
+			$legendFormat="M Y";
 			$intervalStep='1 day';
 			break;
 		case "month":
 			$xFormat='M Y';
 			$typeFormat='Y-m-d';
+			$legendFormat="Y";
 			$intervalStep='1 month';
 			break;
 	}
@@ -152,6 +151,9 @@ function filterDataForTimePeriodandIntervalType($data, $type, $fromStamp, $toSta
 		if ($dateTime >= $fromStamp and  $dateTime <= $toStamp  ) {
 			$receivedData['data'][] = ['x' => $xValue, 'y' => $item->getBytesReceived(), 'timestamp' => $item->getDateTime()->getTimestamp(), 'label' => formatBytes($item->getBytesReceived())];
 			$sentData['data'][] = ['x' => $xValue, 'y' => $item->getBytesSent(), 'timestamp' => $item->getDateTime()->getTimestamp(), 'label' => formatBytes($item->getBytesReceived())];
+
+			$receivedData['legend'] = $item->getDateTime()->format($legendFormat);
+			$sentData['legend'] = $item->getDateTime()->format($legendFormat);
 		}
 	}
 
@@ -177,98 +179,149 @@ function filterDataForTimePeriodandIntervalType($data, $type, $fromStamp, $toSta
 		$graphtype = line|bar
 		$showrec = bool if received data should be rendered
 		$showsent = bool if sent data should be rendered
+		$twoAxes = bool to set if received and sent data should be rendered on separate Axes
 */
-function renderChart($allData, $chartName, $graphtype, $showrec, $showsent) {
-
-	// Filter to show sent/received data
+function renderChartJs($allData, $chartName, $graphtype, $showrec, $showsent,$twoAxes) {
+	$backgroundColors=['#5cb85c','#222','#B85CB8','#5C87B8'];
 	$jsonData = [];
+	$labels= [];
+	$datasets= [];
+	$timestamps=[];
 	foreach($allData as $oneData) {
 		if(($showrec and $oneData['dataType']=='received') or ($showsent and $oneData['dataType']=='sent')) {
-			$jsonData[] = json_encode($oneData);
+			$aSet= [];
+				$aSet['label']=ucfirst($oneData['dataType']);
+			if(count($allData) == 4) {
+				$aSet['label'].=' '.$oneData['legend'];
+			}
+			$aSet[($graphtype=='line' ? 'borderColor' : 'backgroundColor')]=$backgroundColors[count($datasets)];
+			$aSet['backgroundColor']=$backgroundColors[count($datasets)];
+			$aSet['borderWidth']=($graphtype=='line'?3:0);
+			$aSet['fill']=False;
+			if($twoAxes) {
+				$aSet['yAxisID']=$oneData['dataType'];
+			}
+			$dsTimestamps = [];
+			$yData = [];
+			foreach($oneData['data'] as $item) {
+				if(!in_array($item['x'],$labels)) {
+					$labels[]=$item['x'];
+				}
+				$yData[]=$item['y'];
+				$dsTimestamps[]=$item['timestamp'];
+			}
+		$aSet['data'] = $yData;
+		array_push($datasets,$aSet);
+		array_push($timestamps,$dsTimestamps);
 		}
 	}
-
 	?>
-	<figure style="width: 100%; height: 400px;" id="<?php echo $chartName ?>-chart"></figure>
-	<script type="text/javascript">
-		var chart = new xChart(
-			<?="'".$graphtype."'"; ?>,
-			{
-				"xScale": "ordinal",
-				"yScale": "linear",
-				"type": <?="'".$graphtype."'"?>,
-				"main": [<?=implode(',',$jsonData)?>]
-			},
-			<?='\'#'.$chartName.'-chart\''?>,
-			{
-				"tickHintX": -25,
-				"tickFormatY": function (y) {
-					var units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
-					var pow   = Math.floor((y ? Math.log(y) : 0) / Math.log(1024));
-					pow = Math.min(pow, units.length - 1);
+	<canvas id="<?=$chartName."-jsChart"?>"></canvas>
 
-					return (Math.round(y / (1 << (10 * pow)) * 10) / 10) + ' ' + units[pow];
+	<script type="text/javascript">
+		function formatBytes(value, index, values) {
+			var units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+			var pow   = Math.floor((value ? Math.log(value) : 0) / Math.log(1024));
+			pow = Math.min(pow, units.length - 1);
+			return (Math.round(value / (1 << (10 * pow)) * 10) / 10) + ' ' + units[pow];
+		}
+	
+		var ctx = document.getElementById(<?="'".$chartName."-jsChart'"?>).getContext('2d');
+		var <?=$chartName."Chart"?> = new Chart(ctx, {
+		// The type of chart we want to create
+			type: <?="'".$graphtype."'"?>,
+
+			// The data for our dataset
+			data: {
+				labels: <?=json_encode($labels)?>,
+				datasets: <?=json_encode($datasets)?>,
+				timestamps: <?=json_encode($timestamps)?>,
+				
+			},
+
+			// Configuration options go here
+			options: {
+				legend: {
+					position: 'bottom'
 				},
-				"sortX": function (a, b) {
-					// This actually only works because we hacked the
-					// source of xcharts.min.js
-					return 0;
+				scales: {
+					yAxes: [
+						<?php if(!$twoAxes) { ?>
+							{
+								type: 'linear',
+								position: 'left',
+								scaleLabel: {
+									labelString: 'Data',
+									display: true
+								},
+								ticks: {
+									callback: function(value, index, values) {
+										return formatBytes(value, index, values);
+									}
+								}
+							}
+						<?php } ?>
+						<?php if($twoAxes and $showrec) { ?>
+							{
+								id: 'received',
+								type: 'linear',
+								position: 'left',
+								scaleLabel: {
+									labelString: 'Received data',
+									display: true
+								},
+								ticks: {
+									callback: function(value, index, values) {
+										return formatBytes(value, index, values);
+									}
+								}
+							}, 
+						<?php } ?>
+						<?php if($twoAxes and $showsent) { ?>
+							{
+								id: 'sent',
+								type: 'linear',
+								position: 'right',
+								scaleLabel: {
+									labelString: 'Sent data',
+									display: true
+								},
+								ticks: {
+									callback: function(value, index, values) {
+										return formatBytes(value, index, values);
+									}
+								}
+							}
+						<?php } ?>
+					]
 				},
-				"mouseover": function (d, i) {
-					var pos = $(this).offset();
-					$(tt).css(pos);
-					$(tt).text(d.x + ': ' + d.label);
-					$(tt).show();
-				},
-				"mouseout": function (x) {
-					$(tt).hide();
-				}
+
 				<?php 
-				if($chartName=="daily" or $chartName=="monthly") {
-					switch($chartName) {
-						case "daily":
+				if(stripos($chartName,"daily") !== false or stripos($chartName,"monthly") !== false) {
+					switch(true) {
+						case stristr($chartName,"daily"):
 							$itemType='day';
+							$nexttab='hours';
 							break;
-						case "monthly":
+						case stristr($chartName,"monthly"):
 							$itemType='month';
+							$nexttab='days';
 							break;
 					}?>
-					,
-					"click": function (d) {
-						switch(document.getElementById('tabtoshow').value) {
-							case 'days':
-								document.getElementById('tabtoshow').value='hours';
-								break;
-							case 'months':
-								document.getElementById('tabtoshow').value='days';
-								break;
-						}
-						document.getElementById(<?="'".$itemType."toshow'"?>).value=d.timestamp;
+					onClick:function(e){
+						var activeDataset = <?=$chartName."Chart"?>.getDatasetAtEvent(e);
+						var activePoints = <?=$chartName."Chart"?>.getElementsAtEvent(e);
+						var selectedIndex = activePoints[0]._index;
+						timestamp=this.data.timestamps[activeDataset[0]._datasetIndex][selectedIndex];
+						document.getElementById('tabtoshow').value=<?="'".$nexttab."'"?>;
+						document.getElementById(<?="'".$itemType."toshow'"?>).value=timestamp;
 						document.getElementById('dataForm').submit();
 					}
 				<?php 
 				} ?>
 			}
-		);
+		});
 	</script>
-	<div class="explanation">
-	<?php
-	/* Print explanation to the chart */
-	if(count($allData) != 4) {
-		echo '
-			<div class="explanationitem"><div class="receivedBox box"></div> Received data</div>
-			<div class="explanationitem"><div class="sentBox box"></div> Sent data</div>
-		';
-	} else {
-		echo '
-			<div class="explanationitem"><div class="compare0 box"></div> Received data 1</div>
-			<div class="explanationitem"><div class="compare2 box"></div> Received data 2</div>
-			<div class="explanationitem"><div class="compare1 box"></div> Sent data 1</div>
-			<div class="explanationitem"><div class="compare3 box"></div> Sent data 2</div>
-		';
-		}
-	?>
-	</div>
 <?php
 }
 
@@ -438,21 +491,27 @@ function renderChartSelects($data,$selectListType,$itemtoshow,$graphType) {
 	$typetocopmare = day | month | year which type of time range that is compared
 */
 
-function renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$datetocompare1,$datetocompare2,$typetocompare) {
+function renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$datetocompare1,$datetocompare2,$typetocompare,$twoAxes) {
 	switch($typetocompare) {
 		case "day":
 			$dateFormat="Y-m-d";
-			$dataOnXAxis="hour";
+			$legendFormat="Y-m-d";
+			$dataTypeOnXAxis="hour";
+			$chartName='hourlyCompare';
 			$dataX = $database->getHours(); //Fetch raw data
 			break;
 		case "month":
 			$dateFormat="Y-m-01";
-			$dataOnXAxis="day";
+			$legendFormat="F Y";
+			$dataTypeOnXAxis="day";
+			$chartName='dailyCompare';
 			$dataX = $database->getDays(); //Fetch raw data
 			break;
 		case "year":
 			$dateFormat="Y-01-01";
-			$dataOnXAxis="month";
+			$legendFormat="Y";
+			$dataTypeOnXAxis="month";
+			$chartName='monthlyCompare';
 			$dataX = $database->getMonths(); //Fetch raw data
 			break;
 	}
@@ -463,12 +522,16 @@ function renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$date
 	foreach($compares as $compare) {
 		$toTime = strtotime(date($dateFormat,$compare). ' + 1 '.$typetocompare);
 		$fromTime = strtotime(date($dateFormat,$toTime). ' - 1 '.$typetocompare);
-		$toTime=strtotime(date($dateFormat,$toTime).' - 1 '.$dataOnXAxis);
+		$toTime=strtotime(date($dateFormat,$toTime).' - 1 '.$dataTypeOnXAxis);
 
-		$result = filterDataForTimePeriodandIntervalType($dataX, $dataOnXAxis, $fromTime, $toTime); //Filter and pad the data
+		$result = filterDataForTimePeriodandIntervalType($dataX, $dataTypeOnXAxis, $fromTime, $toTime); //Filter and pad the data
 		for($i=0;$i<=1;$i++) {
 			foreach($result[$i]['data'] as &$item) {
-			$item['x'] = explode('/', explode(' ', $item['x'])[0])[0]; // Remove month from data so it can be rendered ins ame x postion.
+				if($dataTypeOnXAxis=='month') {
+					$item['x'] = explode(' ', $item['x'])[0]; // Remove month from data so it can be rendered ins ame x postion.
+				} elseif($dataTypeOnXAxis =='day') {
+					$item['x'] = explode(' ', $item['x'])[1]; // Remove month from data so it can be rendered ins ame x postion.
+				}
 			}
 		}
 		$dataToCompare = array_merge($dataToCompare,$result);
@@ -477,7 +540,7 @@ function renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$date
 		$dataToCompare[$i]['className']='.compare'.$i;
 	}
 
-	renderChart($dataToCompare, $dataOnXAxis.'compare', $comparegraphtype, $showrec, $showsent); //Draw the diagram
+	renderChartJs($dataToCompare, $dataTypeOnXAxis.$chartName, $comparegraphtype, $showrec, $showsent,$twoAxes); //Draw the diagram
 }
 ?>
 <!DOCTYPE html>
@@ -490,10 +553,8 @@ function renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$date
 		<title>Network Traffic</title>
 		<link href="bootstrap-3.2.0-dist/css/bootstrap.min.css" rel="stylesheet" />
 		<link href="bootstrap-3.2.0-dist/css/bootstrap-theme.min.css" rel="stylesheet" />
-		<link href="xcharts/xcharts.min.css" rel="stylesheet" />
-		<script type="text/javascript" src="xcharts/d3.min.js"></script>
-		<script type="text/javascript" src="xcharts/xcharts.min.js"></script>
 		<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
 		<link rel="stylesheet" href="styles.css">
 	</head>
 	<body>
@@ -531,8 +592,10 @@ function renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$date
 							<td>
 								<button type="submit" title="Toggles showing received data in diagrams." class="normal <?=($showrec) ? "selected" :""; ?>" onClick="document.getElementById('showrec').checked=!document.getElementById('showrec').checked;">Show received</button>
 								<button type="submit" title="Toggles showing sent data in diagrams." class="normal <?=($showsent) ? "selected" :""; ?>"  onClick="document.getElementById('showsent').checked=!document.getElementById('showsent').checked;">Show sent</button>
+								<button type="submit" title="Show sent and received data on separate axes." class="normal <?=($twoAxes) ? "selected" :""; ?>"  onClick="document.getElementById('twoAxes').checked=!document.getElementById('twoAxes').checked;">Two Axes</button>
 								<input style="display:none;" type="checkbox" id="showrec" name="showrec" <?php echo ($showrec) ? "checked" :""; ?>/>
 								<input style="display:none;" type="checkbox" id="showsent" name="showsent" <?php echo ($showsent) ? "checked" :""; ?>/>
+								<input style="display:none;" type="checkbox" id="twoAxes" name="twoAxes" <?php echo ($twoAxes) ? "checked" :""; ?>/>
 							</td>
 							<td align="right">
 								<button type="button"  title="Resets all diagrams and selections" class="normal" onClick="document.location='index.php?tabtoshow='+document.getElementById('tabtoshow').value;">Reset all</button>
@@ -545,7 +608,7 @@ function renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$date
 					<button type="button" class="tablink" onclick="openPage('hours',this);"<?=($tabtoshow=='hours') ? 'id="defaultOpen"' : '' ?>>Hours</button>
 					<button type="button" class="tablink" onclick="openPage('days', this);"<?=($tabtoshow=='days') ? 'id="defaultOpen"' : '' ?>>Days</button>
 					<button type="button" class="tablink" onclick="openPage('months', this);"<?=($tabtoshow=='months') ? 'id="defaultOpen"' : '' ?>>Months</button>
-					<button type="button" class="tablink" onclick="openPage('top10', this);"<?=($tabtoshow=='top10') ? 'id="defaultOpen"' : '' ?>>Top 10</button>
+					<button type="button" class="tablink" onclick="openPage('top10', this);"<?=($tabtoshow=='top10') ? 'id="defaultOpen"' : '' ?>>Top 10 days</button>
 					<button type="button" class="tablink" onclick="openPage('compare', this);"<?=($tabtoshow=='compare') ? 'id="defaultOpen"' : '' ?>>Compare</button>
 				</div>
 				<div id="hours" class="tabcontent">
@@ -579,7 +642,7 @@ function renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$date
 							list($receivedData, $sentData) = filterDataForTimePeriodandIntervalType($hours, 'hour', $fromTime, $toTime); //Filter and pad the data
 							renderChartSelects($hours,'day',$daytoshow,$hourgraphtype);
 							echo "<BR/>";
-							renderChart([$receivedData, $sentData], 'hourly', $hourgraphtype, $showrec, $showsent); //Draw the diagram
+							renderChartJs([$receivedData, $sentData], 'hourly', $hourgraphtype, $showrec, $showsent,$twoAxes); //Draw the diagram
 
 							
 						} else {
@@ -618,7 +681,7 @@ function renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$date
 							list($receivedData, $sentData) = filterDataForTimePeriodandIntervalType($days, 'day', $fromDate, $toDate); //Filter and pad data
 							renderChartSelects($days,'month',$monthtoshow,$daygraphtype);
 							echo "<BR/>";
-							renderChart([$receivedData, $sentData], 'daily', $daygraphtype, $showrec, $showsent); //Draw the diagram
+							renderChartJs([$receivedData, $sentData], 'daily', $daygraphtype, $showrec, $showsent,$twoAxes); //Draw the diagram
 
 						} else {
 							echo '<em>Select either received or sent data to show diagram.</em>';
@@ -659,7 +722,7 @@ function renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$date
 							list($receivedData, $sentData) = filterDataForTimePeriodandIntervalType($months, 'month', $fromMonth, $toMonth); //Filter and pad data
 							renderChartSelects($months,'year',$yeartoshow,$monthgraphtype);
 							echo "<BR/>";
-							renderChart([$receivedData, $sentData], 'monthly', $monthgraphtype, $showrec, $showsent); //Draw the diagram
+							renderChartJs([$receivedData, $sentData], 'monthly', $monthgraphtype, $showrec, $showsent,$twoAxes); //Draw the diagram
 
 					} else {
 						echo '<em>Select either received or sent data to show diagram.</em>';
@@ -671,33 +734,31 @@ function renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$date
 					<h2>Top 10 days (lifetime)</h2>
 					<?php renderDataTable($database->getTop10(),'top10'); ?>
 				</div>
-				<div id="compare" class="tabcontent"><h2>
-					<?php
-					if($datetocompare1 != '' and $datetocompare2 != '' and $typetocompare!='') {
-						switch($typetocompare) {
-							case "day":
-								echo "Comparing ".date("Y-m-d (l)",$datetocompare1)." with ".date("Y-m-d (l)",$datetocompare2);
-								break;
-							case "month":
-								echo "Comparing ".date("F Y",$datetocompare1)." with ".date("F Y",$datetocompare2);
-								break;
-							case "year":
-								echo "Comparing ".date("Y",$datetocompare1)." with ".date("Y",$datetocompare2);
-								break;
-						} 
-					} else {
-						echo "Select what to compare";
-					}
-					?>
+				<div id="compare" class="tabcontent">
+					<h2>
+						<?php
+						if($datetocompare1 != '' and $datetocompare2 != '' and $typetocompare!='') {
+							switch($typetocompare) {
+								case "day":
+									echo "Comparing ".date("Y-m-d (l)",$datetocompare1)." with ".date("Y-m-d (l)",$datetocompare2);
+									break;
+								case "month":
+									echo "Comparing ".date("F Y",$datetocompare1)." with ".date("F Y",$datetocompare2);
+									break;
+								case "year":
+									echo "Comparing ".date("Y",$datetocompare1)." with ".date("Y",$datetocompare2);
+									break;
+							} 
+						} else {
+							echo "Select what to compare";
+						}
+						?>
 					</h2>
 					<strong>Compare</strong><br/>
 					<input type="radio" name="comparetype" value="day" onChange="showCompares('day');" <?php if($typetocompare=='day') { echo "checked"; } ?>/> Days
 					<input type="radio" name="comparetype" value="month" onChange="showCompares('month');" <?php if($typetocompare=='month') { echo "checked"; } ?>/> Months
 					<input type="radio" name="comparetype" value="year" onChange="showCompares('year');" <?php if($typetocompare=='year') { echo "checked"; } ?>/> Years
-					
 					<?php			
-
-
 					foreach(['day','month','year'] as $type) {
 						echo "<div class=\"comparelist\"";
 						echo "id='compare{$type}'";
@@ -762,8 +823,8 @@ function renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$date
 								<option value="line" <?php if($comparegraphtype=='line') { echo "selected"; } ?>>Line</option>
 							</select><?php
 							echo "</td></tr></table>";
-
-							renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$datetocompare1,$datetocompare2,$typetocompare); 
+							echo "<BR/>";
+							renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$datetocompare1,$datetocompare2,$typetocompare,$twoAxes); 
 						} else {
 							echo '<em>Select what to compare and press button.</em>';
 						}
@@ -774,20 +835,17 @@ function renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$date
 				</div>
 			</div>
 		</form>
-		<script type="text/javascript">
-			var tt = document.createElement('div');
-			tt.className = 'theTooltip';
-			document.body.appendChild(tt);
-			
+		<script type="text/javascript"> // Comparison 
 			function showCompares(typeToShow) {
-				// Hide all and then show the one sent in
 				comparelist = document.getElementsByClassName("comparelist");
+
+				// Hide all and then show the one sent in
 				for (i = 0; i < comparelist.length; i++) {
 					comparelist[i].style.display = "none";
 				}
 				document.getElementById('compare'+typeToShow).style.display = "block";
 			}
-			
+			// Trigger a comparison
 			function doCompare() {
 				var compareType = document.querySelector('input[name="comparetype"]:checked').value;
 				document.getElementById('datetocompare1').value = document.getElementById('comparelist'+compareType+'0').value;
@@ -795,7 +853,8 @@ function renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$date
 				document.getElementById('typetocompare').value = compareType;
 				document.getElementById('dataForm').submit();
 			}
-			
+		</script>
+		<script type="text/javascript"> // Tab support
 			function openPage(pageName, elmnt) {
 				document.getElementById('tabtoshow').value=pageName;
 
@@ -822,9 +881,9 @@ function renderCompareChart($database,$showrec,$showsent,$comparegraphtype,$date
 
 			// Get the element with id="defaultOpen" and click on it
 			document.getElementById("defaultOpen").click();
-			
-			/* Scroll to right place */
-	        $(window).scroll(function () {
+		</script>
+		<script type="text/javascript"> // Scroll to right place
+			$(window).scroll(function () {
 				sessionStorage.scrollTop = $(this).scrollTop();
 			});
 			$(document).ready(function () {
