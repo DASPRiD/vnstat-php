@@ -190,7 +190,7 @@ function renderChartJs($allData, $chartName, $graphtype, $showrec, $showsent,$tw
 	foreach($allData as $oneData) {
 		if(($showrec and $oneData['dataType']=='received') or ($showsent and $oneData['dataType']=='sent')) {
 			$aSet= [];
-				$aSet['label']=ucfirst($oneData['dataType']);
+			$aSet['label']=ucfirst($oneData['dataType']);
 			if(count($allData) == 4) {
 				$aSet['label'].=' '.$oneData['legend'];
 			}
@@ -308,6 +308,9 @@ function renderChartJs($allData, $chartName, $graphtype, $showrec, $showsent,$tw
 							$nexttab='days';
 							break;
 					}?>
+					onHover: function(e, elements) {
+						$(e.currentTarget).css("cursor", elements[0] ? "pointer" : "default");         
+					},
 					onClick:function(e){
 						var activeDataset = <?=$chartName."Chart"?>.getDatasetAtEvent(e);
 						var activePoints = <?=$chartName."Chart"?>.getElementsAtEvent(e);
