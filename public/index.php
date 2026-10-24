@@ -34,7 +34,17 @@ if (array_key_exists('interfaces', $config) && !empty($config['interfaces'])) {
     $interface = null;
 }
 
-$database = new Vnstat\Database($interface);
+$reader = new Vnstat\Reader();
+
+try {
+    $database = new Vnstat\Database($reader->read($interface));
+} catch (Throwable $error) {
+    http_response_code(500);
+    header('Content-Type: text/plain; charset=utf-8');
+
+    exit($error->getMessage() . "\n");
+}
+
 $timezone = new DateTimeZone(date_default_timezone_get());
 
 function formatBytes($bytes)

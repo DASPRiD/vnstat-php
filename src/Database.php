@@ -64,22 +64,30 @@ class Database
     protected $hours = [];
 
     /**
-     * @param string|null $interface
      * @throws Exception
      */
-    public function __construct($interface = null)
+    public function __construct(string $json)
     {
-        $command = 'vnstat --json';
+        $data = json_decode($json, true);
 
-        if (null !== $interface) {
-            $command .= sprintf(' --iface %s', $interface);
+        if (!is_array($data) || !array_key_exists('jsonversion', $data)) {
+            $received = trim($json);
+
+            if (strlen($received) > 500) {
+                $received = substr($received, 0, 500) . '...';
+            }
+
+            throw new Exception(sprintf("Expected vnStat JSON, got:\n\n%s", $received));
         }
 
-        $data = json_decode(shell_exec($command), true);
         $jsonVersion = $data['jsonversion'];
 
         if (!in_array($jsonVersion, [1, 2])) {
             throw new Exception('Unknown JSON version');
+        }
+
+        if (!array_key_exists('interfaces', $data) || [] === $data['interfaces']) {
+            throw new Exception('The vnStat database contains no interfaces.');
         }
 
         $this->version = $data['vnstatversion'];
