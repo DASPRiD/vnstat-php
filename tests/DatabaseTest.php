@@ -46,12 +46,13 @@ class DatabaseTest extends TestCase
     }
 
     #[DataProvider('fixtures')]
-    public function testKeysDailyAndMonthlyEntriesByPosition(string $fixture): void
+    public function testKeysEntriesByPosition(string $fixture): void
     {
         $database = $this->loadFixture($fixture);
 
         self::assertSame(range(0, 29), array_keys($database->getDays()));
         self::assertSame(range(0, 5), array_keys($database->getMonths()));
+        self::assertSame(range(0, 23), array_keys($database->getHours()));
     }
 
     #[DataProvider('fixtures')]

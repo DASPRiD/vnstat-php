@@ -114,13 +114,7 @@ class Database
         }
 
         foreach ($interface['traffic']['hour'] as $hour) {
-            $this->hours[$hour['id']] = new Entry($hour['rx'], $hour['tx'], true, $this->parseDate($hour));
-        }
-
-        for ($i = 0; $i <= 23; ++$i) {
-            if (!array_key_exists($i, $this->hours)) {
-                $this->hours[$i] = new Entry(0, 0, false, new DateTime());
-            }
+            $this->hours[] = new Entry($hour['rx'], $hour['tx'], true, $this->parseDate($hour));
         }
     }
 

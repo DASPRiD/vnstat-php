@@ -171,15 +171,6 @@ $dayFormatter = new IntlDateFormatter(
             <figure style="width: 100%; height: 300px;" id="hourly-chart"></figure>
             <script type="text/javascript">
                 <?php
-                $endHour   = (int) date('H');
-                $startHour = ($endHour - 23);
-
-                if ($startHour < 0) {
-                    $startHour = 24 + $startHour;
-                }
-
-                $hours = $database->getHours();
-
                 $receivedData = [
                     'className' => '.received',
                     'data'      => [],
@@ -190,26 +181,20 @@ $dayFormatter = new IntlDateFormatter(
                     'data'      => [],
                 ];
 
-                $maxBytes = 0;
+                // The hour of day is a label, not the x value. On the spring
+                // transition a 24 slot window spans 23 wall clock hours, so two
+                // slots would share a label and the ordinal scale would collapse
+                // them onto one band.
+                $hourLabels = [];
 
-                for ($i = $startHour; $i < 24; $i++) {
-                    $hour = $hours[$i];
-                    $receivedData['data'][] = ['x' => $i, 'y' => $hour->getBytesReceived()];
-                    $sentData['data'][] = ['x' => $i, 'y' => $hour->getBytesSent()];
-
-                    $maxBytes = max($maxBytes, $hour->getBytesReceived(), $hour->getBytesSent());
-                }
-
-                if ($endHour !== 23) {
-                    for ($i = 0; $i <= $endHour; $i++) {
-                        $hour = $hours[$i];
-                        $receivedData['data'][] = ['x' => $i, 'y' => $hour->getBytesReceived()];
-                        $sentData['data'][] = ['x' => $i, 'y' => $hour->getBytesSent()];
-
-                        $maxBytes = max($maxBytes, $hour->getBytesReceived(), $hour->getBytesSent());
-                    }
+                foreach (Vnstat\TrafficWindow::hourly($database) as $position => $hour) {
+                    $hourLabels[] = (int) $hour->getDateTime()->format('G');
+                    $receivedData['data'][] = ['x' => $position, 'y' => $hour->getBytesReceived()];
+                    $sentData['data'][] = ['x' => $position, 'y' => $hour->getBytesSent()];
                 }
                 ?>
+                var hourLabels = <?php echo json_encode($hourLabels); ?>;
+
                 var chart = new xChart(
                     'bar',
                     {
@@ -224,6 +209,9 @@ $dayFormatter = new IntlDateFormatter(
                     '#hourly-chart',
                     {
                         "tickHintX": -25,
+                        "tickFormatX": function (x) {
+                            return hourLabels[x];
+                        },
                         "tickFormatY": function (y) {
                             var units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
                             var pow   = Math.floor((y ? Math.log(y) : 0) / Math.log(1024));
