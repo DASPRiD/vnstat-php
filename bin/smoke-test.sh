@@ -115,6 +115,29 @@ done
 printf 'Error: Failed to open database\n' > "$workdir/broken.txt"
 check "$workdir/broken.txt" 500 'Expected vnStat JSON'
 
+# Every script and stylesheet the page asks for has to exist. Checked on disk
+# rather than over HTTP, because the built-in server answers an unknown path
+# with index.php, so a missing asset would come back as a cheerful 200.
+references=$(fetch tests/fixtures/vnstat-2.13.json | grep -oE '(src|href)="[^"]+"' | cut -d'"' -f2)
+
+# A page that failed to render references nothing, and a loop over nothing
+# would report success.
+if [ "$(printf '%s\n' "$references" | grep -c .)" -lt 3 ]; then
+    echo 'FAIL: the page referenced fewer assets than expected'
+    status=1
+fi
+
+for reference in $references; do
+    asset="public/${reference%%\?*}"
+
+    if [ ! -f "$asset" ]; then
+        printf 'FAIL %s is referenced by the page but not on disk\n' "$asset"
+        status=1
+    else
+        printf 'ok   %s\n' "$asset"
+    fi
+done
+
 # Diagnostics reach the server log whatever display_errors and html_errors are
 # set to, so this catches anything the response body check misses.
 if grep -qE '(Deprecated|Warning|Notice|Fatal error|Parse error):' "$workdir/server.log"; then

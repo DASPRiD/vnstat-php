@@ -1,5 +1,7 @@
 /nbproject
 /vendor
+/node_modules
 /config.php
 /config/config.php
+/public/assets
 /.phpunit.cache

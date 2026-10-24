@@ -1,0 +1,13 @@
+{
+    "name": "vnstat-php",
+    "private": true,
+    "description": "A PHP frontend for vnStat network traffic statistics",
+    "license": "MIT",
+    "packageManager": "pnpm@10.34.8",
+    "scripts": {
+        "build": "mkdir -p public/assets && cp node_modules/chart.js/dist/chart.umd.js public/assets/chart.js"
+    },
+    "dependencies": {
+        "chart.js": "^4.6.1"
+    }
+}

@@ -75,19 +75,8 @@ $dayFormatter = new IntlDateFormatter(
 
         <title>Network Traffic</title>
         <link href="<?php echo asset('style.css'); ?>" rel="stylesheet" />
-        <link href="<?php echo asset('xcharts/xcharts.min.css'); ?>" rel="stylesheet" />
-        <script src="<?php echo asset('xcharts/d3.min.js'); ?>"></script>
-        <script src="<?php echo asset('xcharts/xcharts.min.js'); ?>"></script>
-
-        <style>
-            /* xcharts hardcodes its palette for a white page. Thrown away
-               together with xcharts. */
-            g.received > rect { fill: var(--received) !important; }
-            g.sent > rect { fill: var(--sent) !important; }
-            .xchart .axis text { fill: var(--text-muted) !important; }
-            .xchart .axis path,
-            .xchart .axis .tick line { stroke: var(--border) !important; }
-        </style>
+        <script src="<?php echo asset('assets/chart.js'); ?>" defer></script>
+        <script src="<?php echo asset('app.js'); ?>" defer></script>
     </head>
     <body>
         <header>
@@ -111,64 +100,23 @@ $dayFormatter = new IntlDateFormatter(
 
             <section aria-labelledby="hourly-heading">
                 <h2 id="hourly-heading">Hourly</h2>
-                <figure id="hourly-chart"></figure>
-                <script type="text/javascript">
-                    <?php
-                    $receivedData = [
-                        'className' => '.received',
-                        'data'      => [],
-                    ];
+                <figure><canvas id="hourly-chart"></canvas></figure>
+                <?php
+                $hourLabels = [];
+                $received = [];
+                $sent = [];
 
-                    $sentData = [
-                        'className' => '.sent',
-                        'data'      => [],
-                    ];
-
-                    // The hour of day is a label, not the x value. On the spring
-                    // transition a 24 slot window spans 23 wall clock hours, so two
-                    // slots would share a label and the ordinal scale would collapse
-                    // them onto one band.
-                    $hourLabels = [];
-
-                    foreach (Vnstat\TrafficWindow::hourly($database) as $position => $hour) {
-                        $hourLabels[] = (int) $hour->getDateTime()->format('G');
-                        $receivedData['data'][] = ['x' => $position, 'y' => $hour->getBytesReceived()];
-                        $sentData['data'][] = ['x' => $position, 'y' => $hour->getBytesSent()];
-                    }
-                    ?>
-                    var hourLabels = <?php echo json_encode($hourLabels); ?>;
-
-                    var chart = new xChart(
-                        'bar',
-                        {
-                            "xScale": "ordinal",
-                            "yScale": "linear",
-                            "type": "bar",
-                            "main": [
-                                <?php echo json_encode($receivedData); ?>,
-                                <?php echo json_encode($sentData); ?>
-                            ]
-                        },
-                        '#hourly-chart',
-                        {
-                            "tickHintX": -25,
-                            "tickFormatX": function (x) {
-                                return hourLabels[x];
-                            },
-                            "tickFormatY": function (y) {
-                                var units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
-                                var pow   = Math.floor((y ? Math.log(y) : 0) / Math.log(1024));
-                                pow = Math.min(pow, units.length - 1);
-
-                                return (Math.round(y / (1 << (10 * pow)) * 10) / 10) + ' ' + units[pow];
-                            },
-                            "sortX": function (a, b) {
-                                // This actually only works because we hacked the
-                                // source of xcharts.min.js
-                                return 0;
-                            }
-                        }
-                    );
+                foreach (Vnstat\TrafficWindow::hourly($database) as $hour) {
+                    $hourLabels[] = (int) $hour->getDateTime()->format('G');
+                    $received[] = $hour->getBytesReceived();
+                    $sent[] = $hour->getBytesSent();
+                }
+                ?>
+                <script type="application/json" id="hourly-data">
+                    <?php echo json_encode(
+                        ['hours' => $hourLabels, 'received' => $received, 'sent' => $sent],
+                        JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+                    ); ?>
                 </script>
             </section>
 
