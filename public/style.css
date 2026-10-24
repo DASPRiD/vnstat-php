@@ -81,6 +81,10 @@ figure {
     margin: 0;
 }
 
+figure:not(:last-child) {
+    margin-bottom: 1.5rem;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;

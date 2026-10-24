@@ -65,6 +65,39 @@ $dayFormatter = new IntlDateFormatter(
     IntlDateFormatter::NONE,
     date_default_timezone_get()
 );
+
+$shortDayFormatter = new IntlDateFormatter(
+    'en-GB',
+    IntlDateFormatter::NONE,
+    IntlDateFormatter::NONE,
+    date_default_timezone_get(),
+    null,
+    'd MMM'
+);
+
+$shortMonthFormatter = new IntlDateFormatter(
+    'en-GB',
+    IntlDateFormatter::NONE,
+    IntlDateFormatter::NONE,
+    date_default_timezone_get(),
+    null,
+    'MMM yyyy'
+);
+
+$charts = [
+    'hourly' => Vnstat\ChartSeries::from(
+        Vnstat\TrafficWindow::hourly($database),
+        static fn (Vnstat\Entry $entry): string => $entry->getDateTime()->format('G')
+    ),
+    'daily' => Vnstat\ChartSeries::from(
+        $database->getDays(),
+        static fn (Vnstat\Entry $entry): string => (string) $shortDayFormatter->format($entry->getDateTime())
+    ),
+    'monthly' => Vnstat\ChartSeries::from(
+        $database->getMonths(),
+        static fn (Vnstat\Entry $entry): string => (string) $shortMonthFormatter->format($entry->getDateTime())
+    ),
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -97,31 +130,21 @@ $dayFormatter = new IntlDateFormatter(
         </header>
 
         <main>
+            <script type="application/json" id="chart-data">
+                <?php echo json_encode(
+                    $charts,
+                    JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+                ); ?>
+            </script>
 
             <section aria-labelledby="hourly-heading">
                 <h2 id="hourly-heading">Hourly</h2>
                 <figure><canvas id="hourly-chart"></canvas></figure>
-                <?php
-                $hourLabels = [];
-                $received = [];
-                $sent = [];
-
-                foreach (Vnstat\TrafficWindow::hourly($database) as $hour) {
-                    $hourLabels[] = (int) $hour->getDateTime()->format('G');
-                    $received[] = $hour->getBytesReceived();
-                    $sent[] = $hour->getBytesSent();
-                }
-                ?>
-                <script type="application/json" id="hourly-data">
-                    <?php echo json_encode(
-                        ['hours' => $hourLabels, 'received' => $received, 'sent' => $sent],
-                        JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
-                    ); ?>
-                </script>
             </section>
 
             <section aria-labelledby="daily-heading">
                 <h2 id="daily-heading">Daily</h2>
+                <figure><canvas id="daily-chart"></canvas></figure>
 
                 <div>
                     <table>
@@ -168,6 +191,7 @@ $dayFormatter = new IntlDateFormatter(
 
             <section aria-labelledby="monthly-heading">
                 <h2 id="monthly-heading">Monthly</h2>
+                <figure><canvas id="monthly-chart"></canvas></figure>
 
                 <div>
                     <table>

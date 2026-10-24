@@ -92,44 +92,47 @@ const palette = () => {
     return colors;
 };
 
-const hourly = JSON.parse(document.getElementById("hourly-data").textContent);
+const charts = JSON.parse(document.getElementById("chart-data").textContent);
 const colors = palette();
-const axis = binaryAxis(Math.max(...hourly.received, ...hourly.sent), 8);
 
-new Chart(document.getElementById("hourly-chart"), {
-    type: "bar",
-    data: {
-        labels: hourly.hours,
-        datasets: [
-            { label: "Received", data: hourly.received, backgroundColor: colors.received },
-            { label: "Sent", data: hourly.sent, backgroundColor: colors.sent },
-        ],
-    },
-    options: {
-        maintainAspectRatio: false,
-        animation: false,
-        interaction: { mode: "index", intersect: false },
-        scales: {
-            x: {
-                grid: { display: false },
-                border: { color: colors.border },
-                ticks: { color: colors.muted },
-            },
-            y: {
-                beginAtZero: true,
-                suggestedMax: axis.suggestedMax,
-                grid: { color: colors.border },
-                border: { display: false },
-                ticks: { color: colors.muted, callback: formatBytes, stepSize: axis.stepSize },
-            },
+for (const [chartName, series] of Object.entries(charts)) {
+    const axis = binaryAxis(Math.max(...series.received, ...series.sent), 8);
+
+    new Chart(document.getElementById(`${chartName}-chart`), {
+        type: "bar",
+        data: {
+            labels: series.labels,
+            datasets: [
+                { label: "Received", data: series.received, backgroundColor: colors.received },
+                { label: "Sent", data: series.sent, backgroundColor: colors.sent },
+            ],
         },
-        plugins: {
-            legend: { labels: { color: colors.text, boxWidth: 12, boxHeight: 12 } },
-            tooltip: {
-                callbacks: {
-                    label: (item) => `${item.dataset.label}: ${formatBytes(item.parsed.y)}`,
+        options: {
+            maintainAspectRatio: false,
+            animation: false,
+            interaction: { mode: "index", intersect: false },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    border: { color: colors.border },
+                    ticks: { color: colors.muted, maxRotation: 0, autoSkipPadding: 12 },
+                },
+                y: {
+                    beginAtZero: true,
+                    suggestedMax: axis.suggestedMax,
+                    grid: { color: colors.border },
+                    border: { display: false },
+                    ticks: { color: colors.muted, callback: formatBytes, stepSize: axis.stepSize },
+                },
+            },
+            plugins: {
+                legend: { labels: { color: colors.text, boxWidth: 12, boxHeight: 12 } },
+                tooltip: {
+                    callbacks: {
+                        label: (item) => `${item.dataset.label}: ${formatBytes(item.parsed.y)}`,
+                    },
                 },
             },
         },
-    },
-});
+    });
+}
