@@ -1,12 +1,12 @@
 # vnStat-PHP
 
 A small PHP frontend for [vnStat](https://humdi.net/vnstat/) that shows what
-your network interfaces have been doing, by hour, day and month, and which
-days were busiest.
+your network interfaces are doing now, and what they have been doing by five
+minutes, hour, day and month, plus which days were busiest.
 
 <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/example-dark.webp">
-    <img alt="Hourly and daily traffic charts above a table of daily totals." src="docs/example-light.webp">
+    <img alt="A live transfer rate chart above five minute and hourly traffic charts." src="docs/example-light.webp">
 </picture>
 
 ## Requirements
@@ -16,6 +16,9 @@ days were busiest.
   runs as
 - `shell_exec()` not listed in `disable_functions`, since that is how vnStat
   is called
+- `/sys/class/net` readable, which the live view uses. An `open_basedir` that
+  excludes it turns that one panel into an error and leaves the rest of the
+  page working
 
 Run vnStat as a daemon so it has data to report. It can run in user mode
 instead, which the vnStat documentation covers.
@@ -42,6 +45,10 @@ Without configuration the page shows the first interface vnStat reports. To
 pick a different one, or to switch between several, copy
 `config/config.php.dist` to `config/config.php` and list them there. The
 first is the default, and a dropdown appears when there is more than one.
+
+Listing them also saves the live view a `vnstat` call on every refresh. The
+endpoint serves only interfaces the page itself reports, and without a list
+it has to ask vnStat which one that is.
 
 ## Upgrading from an earlier version
 
