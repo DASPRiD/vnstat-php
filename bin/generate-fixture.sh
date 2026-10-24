@@ -84,13 +84,14 @@ SELECT 801 + n,
        1048576 * (560 - n * 37)
 FROM seq;
 
--- A few five minute entries, unused by the frontend today but present in
--- real output.
-WITH RECURSIVE seq(n) AS (SELECT 0 UNION ALL SELECT n+1 FROM seq WHERE n < 11)
+-- vnstatd writes five minute rows continuously, so a gap between the newest
+-- one and "updated" would not occur in practice.
+WITH RECURSIVE seq(n) AS (SELECT 0 UNION ALL SELECT n+1 FROM seq WHERE n < 35)
 INSERT INTO fiveminute (id, interface, date, rx, tx)
 SELECT 60001 + n,
        1,
-       datetime('$ANCHOR', '-' || ((11 - n) * 5) || ' minutes'),
+       datetime('$UPDATED', '-' || (strftime('%M', '$UPDATED') % 5) || ' minutes',
+                            '-' || ((35 - n) * 5) || ' minutes'),
        1048576 * (2 + (n * 3) % 11),
        1048576 * (1 + (n * 2) % 5)
 FROM seq;

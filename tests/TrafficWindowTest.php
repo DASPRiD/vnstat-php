@@ -67,10 +67,71 @@ class TrafficWindowTest extends TestCase
         );
     }
 
+    public function testReturnsThirtySixFiveMinuteSlotsOldestFirstEndingAtTheLastWholeSlot(): void
+    {
+        // The fixture was last updated at 14:37, so 14:35 is the newest slot
+        // that has finished.
+        $window = TrafficWindow::fiveMinute($this->databaseFromFixture());
+
+        self::assertCount(36, $window);
+        self::assertSame('2026-03-15 11:40', $this->times($window)[0]);
+        self::assertSame('2026-03-15 14:35', $this->times($window)[35]);
+    }
+
+    public function testCarriesTheTrafficOfEveryMatchedFiveMinuteSlot(): void
+    {
+        $window = TrafficWindow::fiveMinute($this->databaseFromFixture());
+
+        self::assertTrue($window[0]->isFilled());
+        self::assertSame(2 * self::MIB, $window[0]->getBytesReceived());
+        self::assertSame(1 * self::MIB, $window[0]->getBytesSent());
+    }
+
+    public function testMarksFiveMinuteSlotsOlderThanTheOldestEntryAsUnfilled(): void
+    {
+        $database = $this->databaseFromFixture();
+
+        $window = TrafficWindow::fiveMinute($database, 48);
+
+        self::assertCount(48, $window);
+        // Twelve slots older than the fixture's oldest entry, then the data.
+        self::assertSame(array_merge(array_fill(0, 12, false), array_fill(0, 36, true)), $this->filledFlags($window));
+    }
+
+    public function testKeepsSlotsOutOfTheHourTheSpringTransitionRemoves(): void
+    {
+        // 2026-03-29 has no 02:00 in Europe/Berlin. Spacing the slots on the
+        // clock rather than in elapsed time walks into that hour, and PHP
+        // resolves it by moving an hour the other way.
+        $previous = date_default_timezone_get();
+        date_default_timezone_set('Europe/Berlin');
+
+        try {
+            $database = $this->databaseWithHours([], '2026-03-29 03:42');
+
+            $window = TrafficWindow::fiveMinute($database);
+
+            self::assertCount(36, $window);
+            self::assertSame('2026-03-28 23:45', $this->times($window)[0]);
+            self::assertSame('2026-03-29 03:40', $this->times($window)[35]);
+            self::assertSame([], array_filter($this->times($window), static fn (string $at): bool => str_contains($at, ' 02:')));
+        } finally {
+            date_default_timezone_set($previous);
+        }
+    }
+
+    public function testRefusesAFiveMinuteWindowWithNoSlotsInIt(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('A window needs at least one slot, got 0.');
+
+        TrafficWindow::fiveMinute($this->databaseFromFixture(), 0);
+    }
+
     public function testRefusesAWindowWithNoHoursInIt(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('A window needs at least one hour, got 0.');
+        $this->expectExceptionMessage('A window needs at least one slot, got 0.');
 
         TrafficWindow::hourly($this->databaseFromFixture(), 0);
     }
@@ -120,6 +181,7 @@ class TrafficWindowTest extends TestCase
                 ],
                 'traffic' => [
                     'total' => ['rx' => 0, 'tx' => 0],
+                    'fiveminute' => [],
                     'day' => [],
                     'month' => [],
                     'top' => [],

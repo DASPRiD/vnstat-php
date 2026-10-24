@@ -82,7 +82,20 @@ $shortMonthFormatter = new IntlDateFormatter(
     'MMM yyyy'
 );
 
+$shortTimeFormatter = new IntlDateFormatter(
+    'en-GB',
+    IntlDateFormatter::NONE,
+    IntlDateFormatter::NONE,
+    date_default_timezone_get(),
+    null,
+    'HH:mm'
+);
+
 $charts = [
+    'five-minute' => Vnstat\ChartSeries::from(
+        Vnstat\TrafficWindow::fiveMinute($database),
+        static fn (Vnstat\Entry $entry): string => (string) $shortTimeFormatter->format($entry->getDateTime())
+    ),
     'hourly' => Vnstat\ChartSeries::from(
         Vnstat\TrafficWindow::hourly($database),
         static fn (Vnstat\Entry $entry): string => $entry->getDateTime()->format('G')
@@ -160,6 +173,11 @@ $charts = [
                     JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
                 ); ?>
             </script>
+
+            <section aria-labelledby="five-minute-heading">
+                <h2 id="five-minute-heading">Five minutes</h2>
+                <figure><canvas id="five-minute-chart"></canvas></figure>
+            </section>
 
             <section aria-labelledby="hourly-heading">
                 <h2 id="hourly-heading">Hourly</h2>

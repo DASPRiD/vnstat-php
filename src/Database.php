@@ -63,6 +63,11 @@ class Database
     protected $hours = [];
 
     /**
+     * @var Entry[]
+     */
+    protected $fiveMinutes = [];
+
+    /**
      * @throws Exception
      */
     public function __construct(string $json)
@@ -115,6 +120,15 @@ class Database
 
         foreach ($interface['traffic']['hour'] as $hour) {
             $this->hours[] = new Entry($hour['rx'], $hour['tx'], true, $this->parseDate($hour));
+        }
+
+        foreach ($interface['traffic']['fiveminute'] as $fiveMinute) {
+            $this->fiveMinutes[] = new Entry(
+                $fiveMinute['rx'],
+                $fiveMinute['tx'],
+                true,
+                $this->parseDate($fiveMinute)
+            );
         }
     }
 
@@ -204,6 +218,14 @@ class Database
     public function getHours()
     {
         return $this->hours;
+    }
+
+    /**
+     * @return Entry[]
+     */
+    public function getFiveMinutes()
+    {
+        return $this->fiveMinutes;
     }
 
     private function parseDate(array $data): DateTime
