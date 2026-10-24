@@ -9,7 +9,7 @@
 * Vnstat\Database::getDays(), getMonths() and getTop10() are keyed by position rather than by vnStat's row id.
 * vnStat 1.x is no longer supported. Install vnStat 2.0 or newer.
 * Vnstat\Database::__construct now takes the vnStat JSON as a string rather than an interface name. Use Vnstat\Reader to obtain it.
-* point the virtual host document root at the "public" directory instead of the repository root, and run "composer install" before using the frontend. Move an existing "config.php" to "config/config.php".
+* point the virtual host document root at the "public" directory instead of the repository root, and move an existing "config.php" to "config/config.php".
 
 ### Features
 
