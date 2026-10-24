@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0](https://github.com/DASPRiD/vnstat-php/compare/v1.0.0...v1.1.0) (2026-10-24)
+
+
+### Features
+
+* chart the last three hours at five minute resolution ([7a24d4c](https://github.com/DASPRiD/vnstat-php/commit/7a24d4c35bf495e585fc37fd4208c2c69ea66e0e)), closes [#12](https://github.com/DASPRiD/vnstat-php/issues/12)
+* show the current transfer rate ([2ad0b38](https://github.com/DASPRiD/vnstat-php/commit/2ad0b38fe46eb5e762c8bb0523a9f23bdf6d49ea)), closes [#12](https://github.com/DASPRiD/vnstat-php/issues/12)
+
+
+### Documentation
+
+* describe the live view ([103228a](https://github.com/DASPRiD/vnstat-php/commit/103228a339d42b7ba815a35afa439338088c3b9b))
+
 ## 1.0.0 (2026-10-24)
 
 
