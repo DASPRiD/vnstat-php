@@ -3,7 +3,7 @@ $configFile = dirname(__DIR__) . '/config/config.php';
 $legacyConfigFile = dirname(__DIR__) . '/config.php';
 
 // Drop this, the "/config.php" line in .gitignore and the upgrade section in
-// the README once the v2.0.0 tag is a year old.
+// the README once the v1.0.0 tag is a year old.
 if (file_exists($legacyConfigFile)) {
     http_response_code(500);
     header('Content-Type: text/plain; charset=utf-8');

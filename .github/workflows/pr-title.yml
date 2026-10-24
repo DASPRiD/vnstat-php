@@ -1,0 +1,19 @@
+name: Pull request title
+
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  title:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Pull requests are squashed, so the title becomes the commit message
+      # that release-please reads.
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

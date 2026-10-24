@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Releasing twice at once would race over the same tag.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+
+      - uses: actions/checkout@v7
+        if: steps.release.outputs.release_created
+        with:
+          ref: ${{ steps.release.outputs.tag_name }}
+
+      - uses: shivammathur/setup-php@v2
+        if: steps.release.outputs.release_created
+        with:
+          php-version: '8.2'
+          extensions: intl, json
+          coverage: none
+
+      - uses: pnpm/action-setup@v6
+        if: steps.release.outputs.release_created
+
+      - uses: actions/setup-node@v7
+        if: steps.release.outputs.release_created
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - if: steps.release.outputs.release_created
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+          composer install --no-dev --optimize-autoloader --no-interaction
+
+      - if: steps.release.outputs.release_created
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag_name }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          archive="vnstat-php-${VERSION}.tar.gz"
+          tar -czf "$archive" \
+            --transform "s,^,vnstat-php-${VERSION}/," \
+            public src config vendor \
+            composer.json composer.lock CHANGELOG.md LICENSE README.md
+          gh release upload "$TAG" "$archive"
