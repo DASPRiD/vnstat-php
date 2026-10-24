@@ -3,7 +3,7 @@
     "private": true,
     "description": "A PHP frontend for vnStat network traffic statistics",
     "license": "MIT",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "packageManager": "pnpm@10.34.8",
     "scripts": {
         "build": "mkdir -p public/assets && cp node_modules/chart.js/dist/chart.umd.js public/assets/chart.js"
