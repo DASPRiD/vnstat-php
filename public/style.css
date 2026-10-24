@@ -58,6 +58,13 @@ section + section {
     margin-top: 2.5rem;
 }
 
+header > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    align-items: center;
+}
+
 label {
     display: inline-flex;
     gap: 0.5rem;

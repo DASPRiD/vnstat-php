@@ -92,19 +92,67 @@ const palette = () => {
     return colors;
 };
 
-const charts = JSON.parse(document.getElementById("chart-data").textContent);
-const colors = palette();
+const THEME_KEY = "vnstat-php-theme";
+const THEMES = ["auto", "light", "dark"];
 
-for (const [chartName, series] of Object.entries(charts)) {
-    const axis = binaryAxis(Math.max(...series.received, ...series.sent), 8);
+const storedTheme = () => {
+    try {
+        const theme = localStorage.getItem(THEME_KEY);
 
-    new Chart(document.getElementById(`${chartName}-chart`), {
+        return THEMES.includes(theme) ? theme : "auto";
+    } catch {
+        return "auto";
+    }
+};
+
+const applyTheme = (theme) => {
+    if (theme === "auto") {
+        document.documentElement.style.removeProperty("color-scheme");
+    } else {
+        document.documentElement.style.colorScheme = theme;
+    }
+
+    try {
+        if (theme === "auto") {
+            localStorage.removeItem(THEME_KEY);
+        } else {
+            localStorage.setItem(THEME_KEY, theme);
+        }
+    } catch {
+        // The theme still applies for this page view.
+    }
+};
+
+const colorize = (chart, colors) => {
+    chart.data.datasets[0].backgroundColor = colors.received;
+    chart.data.datasets[1].backgroundColor = colors.sent;
+    chart.options.scales.x.border.color = colors.border;
+    chart.options.scales.x.ticks.color = colors.muted;
+    chart.options.scales.y.grid.color = colors.border;
+    chart.options.scales.y.ticks.color = colors.muted;
+    chart.options.plugins.legend.labels.color = colors.text;
+};
+
+const series = JSON.parse(document.getElementById("chart-data").textContent);
+
+// The script in the head applies this too, but only to stop a flash. Doing
+// it here as well is what keeps the page honest when that script is blocked,
+// by a content security policy without unsafe-inline for instance.
+const theme = storedTheme();
+applyTheme(theme);
+
+const initial = palette();
+
+const charts = Object.entries(series).map(([chartName, points]) => {
+    const axis = binaryAxis(Math.max(...points.received, ...points.sent), 8);
+
+    return new Chart(document.getElementById(`${chartName}-chart`), {
         type: "bar",
         data: {
-            labels: series.labels,
+            labels: points.labels,
             datasets: [
-                { label: "Received", data: series.received, backgroundColor: colors.received },
-                { label: "Sent", data: series.sent, backgroundColor: colors.sent },
+                { label: "Received", data: points.received, backgroundColor: initial.received },
+                { label: "Sent", data: points.sent, backgroundColor: initial.sent },
             ],
         },
         options: {
@@ -114,19 +162,19 @@ for (const [chartName, series] of Object.entries(charts)) {
             scales: {
                 x: {
                     grid: { display: false },
-                    border: { color: colors.border },
-                    ticks: { color: colors.muted, maxRotation: 0, autoSkipPadding: 12 },
+                    border: { color: initial.border },
+                    ticks: { color: initial.muted, maxRotation: 0, autoSkipPadding: 12 },
                 },
                 y: {
                     beginAtZero: true,
                     suggestedMax: axis.suggestedMax,
-                    grid: { color: colors.border },
+                    grid: { color: initial.border },
                     border: { display: false },
-                    ticks: { color: colors.muted, callback: formatBytes, stepSize: axis.stepSize },
+                    ticks: { color: initial.muted, callback: formatBytes, stepSize: axis.stepSize },
                 },
             },
             plugins: {
-                legend: { labels: { color: colors.text, boxWidth: 12, boxHeight: 12 } },
+                legend: { labels: { color: initial.text, boxWidth: 12, boxHeight: 12 } },
                 tooltip: {
                     callbacks: {
                         label: (item) => `${item.dataset.label}: ${formatBytes(item.parsed.y)}`,
@@ -135,4 +183,27 @@ for (const [chartName, series] of Object.entries(charts)) {
             },
         },
     });
-}
+});
+
+const repaint = () => {
+    const colors = palette();
+
+    for (const chart of charts) {
+        colorize(chart, colors);
+        chart.update();
+    }
+};
+
+const themeSelect = document.getElementById("theme");
+themeSelect.value = theme;
+themeSelect.addEventListener("change", () => {
+    applyTheme(themeSelect.value);
+    repaint();
+});
+
+// The system setting can change while the page is open.
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (storedTheme() === "auto") {
+        repaint();
+    }
+});

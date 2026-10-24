@@ -107,6 +107,21 @@ $charts = [
         <meta name="viewport" content="width=device-width, initial-scale=1" />
 
         <title>Network Traffic</title>
+
+        <script>
+            // Runs before the first paint, so a stored preference does not
+            // show a frame of the other theme while app.js is still deferred.
+            try {
+                const theme = localStorage.getItem("vnstat-php-theme");
+
+                if (theme === "light" || theme === "dark") {
+                    document.documentElement.style.colorScheme = theme;
+                }
+            } catch {
+                // Storage can be unavailable, in which case auto is right.
+            }
+        </script>
+
         <link href="<?php echo asset('style.css'); ?>" rel="stylesheet" />
         <script src="<?php echo asset('assets/chart.js'); ?>" defer></script>
         <script src="<?php echo asset('app.js'); ?>" defer></script>
@@ -115,18 +130,29 @@ $charts = [
         <header>
             <h1>Network Traffic</h1>
 
-            <?php if (array_key_exists('interfaces', $config) && count($config['interfaces']) > 1): ?>
+            <div>
+                <?php if (array_key_exists('interfaces', $config) && count($config['interfaces']) > 1): ?>
+                    <label>
+                        Interface
+                        <select onchange="window.location.href = '?interface=' + this.value;">
+                            <?php foreach ($config['interfaces'] as $option): ?>
+                                <option value="<?php echo htmlspecialchars($option); ?>"<?php if ($option === $interface): ?> selected<?php endif; ?>>
+                                    <?php echo htmlspecialchars($option); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                <?php endif; ?>
+
                 <label>
-                    Interface
-                    <select onchange="window.location.href = '?interface=' + this.value;">
-                        <?php foreach ($config['interfaces'] as $option): ?>
-                            <option value="<?php echo htmlspecialchars($option); ?>"<?php if ($option === $interface): ?> selected<?php endif; ?>>
-                                <?php echo htmlspecialchars($option); ?>
-                            </option>
-                        <?php endforeach; ?>
+                    Theme
+                    <select id="theme">
+                        <option value="auto">Auto</option>
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
                     </select>
                 </label>
-            <?php endif; ?>
+            </div>
         </header>
 
         <main>
