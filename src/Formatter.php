@@ -12,7 +12,10 @@ class Formatter
     {
         $index = self::unitIndex($bytes, count(self::BYTE_UNITS), 1024);
 
-        return round($bytes / pow(1024, $index)) . ' ' . self::BYTE_UNITS[$index];
+        // A count of bytes has no fractional part to show.
+        $value = 0 === $index ? (string) $bytes : self::threeSignificantFigures($bytes / pow(1024, $index));
+
+        return $value . ' ' . self::BYTE_UNITS[$index];
     }
 
     public static function bitrate(int $bytes, int $seconds): string
@@ -20,7 +23,7 @@ class Formatter
         $bits = ($bytes * 8) / $seconds;
         $index = self::unitIndex($bits, count(self::BITRATE_UNITS), 1000);
 
-        return round($bits / pow(1000, $index), 2) . ' ' . self::BITRATE_UNITS[$index];
+        return self::threeSignificantFigures($bits / pow(1000, $index)) . ' ' . self::BITRATE_UNITS[$index];
     }
 
     public static function ratio(int $bytesReceived, int $bytesSent): string
@@ -34,6 +37,30 @@ class Formatter
         }
 
         return sprintf('<div class="ratio"><div style="width: %f%%;"></div></div>', $bytesReceived / $total * 100);
+    }
+
+    /**
+     * Values under ten keep two decimals, under a hundred one, and above that
+     * none, so a figure carries the same information whatever unit it landed
+     * in.
+     *
+     * Rounding can carry a value into the next band, which then wants one
+     * decimal fewer: 99.96 is 100, not 100.0.
+     */
+    private static function threeSignificantFigures(float $value): string
+    {
+        $rounded = round($value, self::decimals($value));
+
+        return number_format($rounded, self::decimals($rounded), '.', '');
+    }
+
+    private static function decimals(float $value): int
+    {
+        return match (true) {
+            $value >= 100 => 0,
+            $value >= 10 => 1,
+            default => 2,
+        };
     }
 
     private static function unitIndex(int|float $value, int $unitCount, int $base): int

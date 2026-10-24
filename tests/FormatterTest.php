@@ -13,13 +13,18 @@ class FormatterTest extends TestCase
             'zero' => [0, '0 B'],
             'one byte' => [1, '1 B'],
             'the last value below a kibibyte' => [1023, '1023 B'],
-            'the first kibibyte' => [1024, '1 KiB'],
-            'one and a half kibibytes round up' => [1536, '2 KiB'],
+            'the first kibibyte' => [1024, '1.00 KiB'],
+            'one and a half kibibytes' => [1536, '1.50 KiB'],
             'rounding can reach the next unit' => [1048575, '1024 KiB'],
-            'a mebibyte' => [1048576, '1 MiB'],
-            'a gibibyte' => [1073741824, '1 GiB'],
-            'a tebibyte' => [1099511627776, '1 TiB'],
+            'a mebibyte' => [1048576, '1.00 MiB'],
+            'a gibibyte' => [1073741824, '1.00 GiB'],
+            'a tebibyte' => [1099511627776, '1.00 TiB'],
             'beyond the largest unit it keeps counting' => [2251799813685248, '2048 TiB'],
+            'values a whole number would not tell apart' => [1127428915, '1.05 GiB'],
+            'the other side of that pair' => [2040109466, '1.90 GiB'],
+            'precision drops as the figure grows' => [49816154112, '46.4 GiB'],
+            'rounding up into the next band drops a decimal' => [104816148, '100 MiB'],
+            'and again one band lower' => [10733484000, '10.0 GiB'],
         ];
     }
 
@@ -32,13 +37,15 @@ class FormatterTest extends TestCase
     public static function bitrateValues(): array
     {
         return [
-            'no traffic over a day' => [0, 86400, '0 bit/s'],
-            'a rate below one bit per second' => [1, 86400, '0 bit/s'],
+            'no traffic over a day' => [0, 86400, '0.00 bit/s'],
+            'a rate below one bit per second' => [1, 86400, '0.00 bit/s'],
+            'rounding up into the next band drops a decimal' => [12495, 1, '100 kbit/s'],
+            'and again one band lower' => [1249500, 1, '10.0 Mbit/s'],
             'a mebibyte in a second' => [1048576, 1, '8.39 Mbit/s'],
-            'a mebibyte over a day' => [1048576, 86400, '97.09 bit/s'],
-            'a gibibyte over a day' => [1073741824, 86400, '99.42 kbit/s'],
-            'a tebibyte in a second' => [1099511627776, 1, '8.8 Tbit/s'],
-            'the decimal boundary' => [125, 1, '1 kbit/s'],
+            'a mebibyte over a day' => [1048576, 86400, '97.1 bit/s'],
+            'a gibibyte over a day' => [1073741824, 86400, '99.4 kbit/s'],
+            'a tebibyte in a second' => [1099511627776, 1, '8.80 Tbit/s'],
+            'the decimal boundary' => [125, 1, '1.00 kbit/s'],
         ];
     }
 
