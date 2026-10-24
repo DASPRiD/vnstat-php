@@ -1,7 +1,6 @@
 <?php
 namespace Vnstat;
 
-use Cassandra\Date;
 use DateTime;
 use DateTimeZone;
 use Exception;
@@ -82,78 +81,40 @@ class Database
 
         $jsonVersion = $data['jsonversion'];
 
-        if (!in_array($jsonVersion, [1, 2])) {
-            throw new Exception('Unknown JSON version');
+        if (!is_scalar($jsonVersion) || '2' !== (string) $jsonVersion) {
+            throw new Exception(sprintf(
+                'Unsupported vnStat JSON schema version %s. Install vnStat 2.0 or newer.',
+                is_scalar($jsonVersion) ? $jsonVersion : get_debug_type($jsonVersion)
+            ));
         }
 
         if (!array_key_exists('interfaces', $data) || [] === $data['interfaces']) {
             throw new Exception('The vnStat database contains no interfaces.');
         }
 
-        $this->version = $data['vnstatversion'];
         $interface = $data['interfaces'][0];
-        $this->createdAt = $this->parseDate($interface['created'], $jsonVersion);
-        $this->updatedAt = $this->parseDate($interface['updated'], $jsonVersion);
-        $unitMultiplier = 1;
-        $daysCategory = 'day';
-        $monthsCategory = 'month';
-        $hoursCategory = 'hour';
-        $topsCategory = 'top';
+        $this->version = $data['vnstatversion'];
+        $this->interface = $interface['name'];
+        $this->nick = $interface['alias'];
+        $this->createdAt = $this->parseDate($interface['created']);
+        $this->updatedAt = $this->parseDate($interface['updated']);
+        $this->totalBytesReceived = $interface['traffic']['total']['rx'];
+        $this->totalBytesSent = $interface['traffic']['total']['tx'];
 
-        switch ($jsonVersion) {
-            case 1:
-                $unitMultiplier = 1024;
-                $this->interface = $interface['id'];
-                $this->nick = $interface['nick'];
-                $daysCategory = 'days';
-                $monthsCategory = 'months';
-                $hoursCategory = 'hours';
-                $topsCategory = 'tops';
-                break;
-
-            case 2:
-                $this->interface = $interface['name'];
-                $this->nick = $interface['alias'];
-                break;
+        foreach ($interface['traffic']['day'] as $day) {
+            $this->days[$day['id']] = new Entry($day['rx'], $day['tx'], true, $this->parseDate($day));
         }
 
-        $this->totalBytesReceived = $interface['traffic']['total']['rx'] * $unitMultiplier;
-        $this->totalBytesSent = $interface['traffic']['total']['tx'] * $unitMultiplier;
-
-        foreach ($interface['traffic'][$daysCategory] as $day) {
-            $this->days[$day['id']] = new Entry(
-                $day['rx'] * $unitMultiplier,
-                $day['tx'] * $unitMultiplier,
-                true,
-                $this->parseDate($day, $jsonVersion)
-            );
+        foreach ($interface['traffic']['month'] as $month) {
+            $this->months[$month['id']] = new Entry($month['rx'], $month['tx'], true, $this->parseDate($month));
         }
 
-        foreach ($interface['traffic'][$monthsCategory] as $month) {
-            $this->months[$month['id']] = new Entry(
-                $month['rx'] * $unitMultiplier,
-                $month['tx'] * $unitMultiplier,
-                true,
-                $this->parseDate($month, $jsonVersion)
-            );
+        foreach ($interface['traffic']['top'] as $top) {
+            $this->top10[$top['id']] = new Entry($top['rx'], $top['tx'], true, $this->parseDate($top));
         }
 
-        foreach ($interface['traffic'][$topsCategory] as $top) {
-            $this->top10[$top['id']] = new Entry(
-                $top['rx'] * $unitMultiplier,
-                $top['tx'] * $unitMultiplier,
-                true,
-                $this->parseDate($top, $jsonVersion)
-            );
-        }
-
-        foreach ($interface['traffic'][$hoursCategory] as $hour) {
-            $this->hours[$hour['id']] = new Entry(
-                $hour['rx'] * $unitMultiplier,
-                $hour['tx'] * $unitMultiplier,
-                true,
-                $this->parseDate($hour, $jsonVersion)
-            );
+        foreach ($interface['traffic']['hour'] as $hour) {
+            $this->hours[$hour['id']] = new Entry($hour['rx'], $hour['tx'], true, $this->parseDate($hour));
         }
 
         for ($i = 0; $i <= 23; ++$i) {
@@ -251,7 +212,8 @@ class Database
         return $this->hours;
     }
 
-    private function parseDate(array $data, int $jsonVersion) {
+    private function parseDate(array $data): DateTime
+    {
         $result = new DateTime();
         $result->setDate(
             $data['date']['year'],
@@ -260,11 +222,7 @@ class Database
         );
 
         if (array_key_exists('time', $data)) {
-            $result->setTime(
-                $data['time']['hour'],
-                $data['time'][$jsonVersion === 1 ? 'minutes' : 'minute'],
-                0
-            );
+            $result->setTime($data['time']['hour'], $data['time']['minute'], 0);
         } else {
             $result->setTime(0, 0, 0);
         }

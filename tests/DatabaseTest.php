@@ -122,12 +122,28 @@ class DatabaseTest extends TestCase
         }
     }
 
-    public function testRejectsAnUnknownJsonVersion(): void
+    public function testRejectsTheVnStat1Schema(): void
     {
         $this->expectException(Exception::class);
-        $this->expectExceptionMessage('Unknown JSON version');
+        $this->expectExceptionMessage('Unsupported vnStat JSON schema version 1');
 
-        new Database('{"jsonversion":"3","interfaces":[]}');
+        new Database('{"jsonversion":"1","vnstatversion":"1.18","interfaces":[]}');
+    }
+
+    public function testRejectsANewerSchemaVersion(): void
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Unsupported vnStat JSON schema version 3');
+
+        new Database('{"jsonversion":"3","vnstatversion":"3.0","interfaces":[]}');
+    }
+
+    public function testRejectsANonScalarSchemaVersionWithoutWarning(): void
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Unsupported vnStat JSON schema version array');
+
+        new Database('{"jsonversion":["2"],"interfaces":[]}');
     }
 
     public function testRejectsADatabaseWithoutInterfaces(): void
