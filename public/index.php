@@ -47,6 +47,18 @@ try {
 
 $timezone = new DateTimeZone(date_default_timezone_get());
 
+/**
+ * Appends the file's modification time to an asset URL.
+ *
+ * The result is escaped for use in an attribute.
+ */
+function asset(string $path): string
+{
+    $absolutePath = __DIR__ . '/' . $path;
+
+    return htmlspecialchars($path . '?v=' . (file_exists($absolutePath) ? filemtime($absolutePath) ?: 0 : 0));
+}
+
 function formatBytes($bytes)
 {
     $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
@@ -94,10 +106,10 @@ $dayFormatter = new IntlDateFormatter(
         <meta name="viewport" content="width=device-width, initial-scale=1" />
 
         <title>Network Traffic</title>
-        <link href="style.css" rel="stylesheet" />
-        <link href="xcharts/xcharts.min.css" rel="stylesheet" />
-        <script src="xcharts/d3.min.js"></script>
-        <script src="xcharts/xcharts.min.js"></script>
+        <link href="<?php echo asset('style.css'); ?>" rel="stylesheet" />
+        <link href="<?php echo asset('xcharts/xcharts.min.css'); ?>" rel="stylesheet" />
+        <script src="<?php echo asset('xcharts/d3.min.js'); ?>"></script>
+        <script src="<?php echo asset('xcharts/xcharts.min.js'); ?>"></script>
 
         <style>
             /* xcharts hardcodes its palette for a white page. Thrown away
