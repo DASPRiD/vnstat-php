@@ -34,10 +34,11 @@ class FormatterTest extends TestCase
         return [
             'no traffic over a day' => [0, 86400, '0 bit/s'],
             'a rate below one bit per second' => [1, 86400, '0 bit/s'],
-            'a mebibyte in a second' => [1048576, 1, '8 mbit/s'],
+            'a mebibyte in a second' => [1048576, 1, '8.39 Mbit/s'],
             'a mebibyte over a day' => [1048576, 86400, '97.09 bit/s'],
-            'a gibibyte over a day' => [1073741824, 86400, '97.09 kbit/s'],
-            'a tebibyte in a second' => [1099511627776, 1, '8 tbit/s'],
+            'a gibibyte over a day' => [1073741824, 86400, '99.42 kbit/s'],
+            'a tebibyte in a second' => [1099511627776, 1, '8.8 Tbit/s'],
+            'the decimal boundary' => [125, 1, '1 kbit/s'],
         ];
     }
 
