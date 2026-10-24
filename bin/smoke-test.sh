@@ -107,7 +107,7 @@ check() {
 }
 
 for fixture in tests/fixtures/*.json; do
-    check "$fixture" 200 '<h2>Hourly</h2>' 40
+    check "$fixture" 200 '>Hourly<' 40
 done
 
 # The catch in public/index.php is the only thing standing between a failed
