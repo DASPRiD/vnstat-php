@@ -59,38 +59,6 @@ function asset(string $path): string
     return htmlspecialchars($path . '?v=' . (file_exists($absolutePath) ? filemtime($absolutePath) ?: 0 : 0));
 }
 
-function formatBytes($bytes)
-{
-    $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
-    $pow   = floor(($bytes ? log($bytes) : 0) / log(1024));
-    $pow   = min($pow, count($units) - 1);
-    $bytes /= pow(1024, $pow);
-
-    return round($bytes) . ' ' . $units[$pow];
-}
-
-function formatBitrate($bytes, $seconds)
-{
-    $units = ['bit', 'kbit', 'mbit', 'gbit', 'tbit'];
-    $bits  = ($bytes * 8) / $seconds;
-    $pow   = floor(($bits ? log($bits) : 0) / log(1024));
-    $pow   = min($pow, count($units) - 1);
-    $bits  /= (1 << (10 * $pow));
-
-    return round($bits, 2) . ' ' . $units[$pow] . '/s';
-}
-
-function formatRatio($bytesReceived, $bytesSent)
-{
-    $total = $bytesReceived + $bytesSent;
-    $percentageReceived = ($bytesReceived / $total * 100);
-
-    return sprintf(
-        '<div class="ratio"><div style="width: %f%%;"></div></div>',
-        $percentageReceived
-    );
-}
-
 $dayFormatter = new IntlDateFormatter(
     'en-GB',
     IntlDateFormatter::FULL,
@@ -238,11 +206,11 @@ $dayFormatter = new IntlDateFormatter(
                                 ?>
                                 <tr>
                                     <th scope="row"><?php echo $dayFormatter->format($entry->getDateTime()); ?></th>
-                                    <td><?php echo formatBytes($entry->getBytesReceived()); ?></td>
-                                    <td><?php echo formatBytes($entry->getBytesSent()); ?></td>
-                                    <td><?php echo formatBytes($entry->getBytesReceived() + $entry->getBytesSent()); ?></td>
-                                    <td><?php echo formatBitrate($entry->getBytesReceived() + $entry->getBytesSent(), $range); ?></td>
-                                    <td><?php echo formatRatio($entry->getBytesReceived(), $entry->getBytesSent()); ?></td>
+                                    <td><?php echo Vnstat\Formatter::bytes($entry->getBytesReceived()); ?></td>
+                                    <td><?php echo Vnstat\Formatter::bytes($entry->getBytesSent()); ?></td>
+                                    <td><?php echo Vnstat\Formatter::bytes($entry->getBytesReceived() + $entry->getBytesSent()); ?></td>
+                                    <td><?php echo Vnstat\Formatter::bitrate($entry->getBytesReceived() + $entry->getBytesSent(), $range); ?></td>
+                                    <td><?php echo Vnstat\Formatter::ratio($entry->getBytesReceived(), $entry->getBytesSent()); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -288,11 +256,11 @@ $dayFormatter = new IntlDateFormatter(
                                 ?>
                                 <tr>
                                     <th scope="row"><?php echo $entry->getDateTime()->format('F Y'); ?></th>
-                                    <td><?php echo formatBytes($entry->getBytesReceived()); ?></td>
-                                    <td><?php echo formatBytes($entry->getBytesSent()); ?></td>
-                                    <td><?php echo formatBytes($entry->getBytesReceived() + $entry->getBytesSent()); ?></td>
-                                    <td><?php echo formatBitrate($entry->getBytesReceived() + $entry->getBytesSent(), $range); ?></td>
-                                    <td><?php echo formatRatio($entry->getBytesReceived(), $entry->getBytesSent()); ?></td>
+                                    <td><?php echo Vnstat\Formatter::bytes($entry->getBytesReceived()); ?></td>
+                                    <td><?php echo Vnstat\Formatter::bytes($entry->getBytesSent()); ?></td>
+                                    <td><?php echo Vnstat\Formatter::bytes($entry->getBytesReceived() + $entry->getBytesSent()); ?></td>
+                                    <td><?php echo Vnstat\Formatter::bitrate($entry->getBytesReceived() + $entry->getBytesSent(), $range); ?></td>
+                                    <td><?php echo Vnstat\Formatter::ratio($entry->getBytesReceived(), $entry->getBytesSent()); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -334,11 +302,11 @@ $dayFormatter = new IntlDateFormatter(
                                 ?>
                                 <tr>
                                     <th scope="row"><?php echo $position + 1; ?>. <?php echo $dayFormatter->format($entry->getDateTime()); ?></th>
-                                    <td><?php echo formatBytes($entry->getBytesReceived()); ?></td>
-                                    <td><?php echo formatBytes($entry->getBytesSent()); ?></td>
-                                    <td><?php echo formatBytes($entry->getBytesReceived() + $entry->getBytesSent()); ?></td>
-                                    <td><?php echo formatBitrate($entry->getBytesReceived() + $entry->getBytesSent(), $range); ?></td>
-                                    <td><?php echo formatRatio($entry->getBytesReceived(), $entry->getBytesSent()); ?></td>
+                                    <td><?php echo Vnstat\Formatter::bytes($entry->getBytesReceived()); ?></td>
+                                    <td><?php echo Vnstat\Formatter::bytes($entry->getBytesSent()); ?></td>
+                                    <td><?php echo Vnstat\Formatter::bytes($entry->getBytesReceived() + $entry->getBytesSent()); ?></td>
+                                    <td><?php echo Vnstat\Formatter::bitrate($entry->getBytesReceived() + $entry->getBytesSent(), $range); ?></td>
+                                    <td><?php echo Vnstat\Formatter::ratio($entry->getBytesReceived(), $entry->getBytesSent()); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
