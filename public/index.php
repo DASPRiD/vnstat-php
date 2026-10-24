@@ -253,7 +253,7 @@ $dayFormatter = new IntlDateFormatter(
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($database->getDays() as $id => $entry): ?>
+                    <?php foreach ($database->getDays() as $entry): ?>
                         <?php
                         if (!$entry->isFilled()) {
                             continue;
@@ -294,7 +294,7 @@ $dayFormatter = new IntlDateFormatter(
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($database->getMonths() as $id => $entry): ?>
+                    <?php foreach ($database->getMonths() as $entry): ?>
                         <?php
                         if (!$entry->isFilled()) {
                             continue;
@@ -340,7 +340,7 @@ $dayFormatter = new IntlDateFormatter(
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($database->getTop10() as $id => $entry): ?>
+                    <?php foreach ($database->getTop10() as $position => $entry): ?>
                         <?php
                         if (!$entry->isFilled()) {
                             continue;
@@ -357,7 +357,7 @@ $dayFormatter = new IntlDateFormatter(
                         $range = $endTimestamp - $startTimestamp;
                         ?>
                         <tr>
-                            <td class="position"><?php echo ($id + 1); ?></td>
+                            <td class="position"><?php echo $position + 1; ?></td>
                             <td class="day"><?php echo $dayFormatter->format($entry->getDateTime()); ?></td>
                             <td class="received"><?php echo formatBytes($entry->getBytesReceived()); ?></td>
                             <td class="sent"><?php echo formatBytes($entry->getBytesSent()); ?></td>

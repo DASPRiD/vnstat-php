@@ -46,6 +46,15 @@ class DatabaseTest extends TestCase
     }
 
     #[DataProvider('fixtures')]
+    public function testKeysDailyAndMonthlyEntriesByPosition(string $fixture): void
+    {
+        $database = $this->loadFixture($fixture);
+
+        self::assertSame(range(0, 29), array_keys($database->getDays()));
+        self::assertSame(range(0, 5), array_keys($database->getMonths()));
+    }
+
+    #[DataProvider('fixtures')]
     public function testParsesDailyEntries(string $fixture): void
     {
         $days = $this->filledEntriesOldestFirst($this->loadFixture($fixture)->getDays());
@@ -72,6 +81,16 @@ class DatabaseTest extends TestCase
         self::assertSame('2025-10-01 00:00', $first->getDateTime()->format('Y-m-d H:i'));
         self::assertSame(18000 * self::MIB, $first->getBytesReceived());
         self::assertSame(4200 * self::MIB, $first->getBytesSent());
+    }
+
+    #[DataProvider('fixtures')]
+    public function testNumbersTopEntriesByRankRatherThanRowId(string $fixture): void
+    {
+        // vnStat numbers these by SQLite rowid, which the fixtures deliberately
+        // start at 801.
+        $database = $this->loadFixture($fixture);
+
+        self::assertSame(range(0, 9), array_keys($database->getTop10()));
     }
 
     #[DataProvider('fixtures')]

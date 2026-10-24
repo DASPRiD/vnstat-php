@@ -102,15 +102,15 @@ class Database
         $this->totalBytesSent = $interface['traffic']['total']['tx'];
 
         foreach ($interface['traffic']['day'] as $day) {
-            $this->days[$day['id']] = new Entry($day['rx'], $day['tx'], true, $this->parseDate($day));
+            $this->days[] = new Entry($day['rx'], $day['tx'], true, $this->parseDate($day));
         }
 
         foreach ($interface['traffic']['month'] as $month) {
-            $this->months[$month['id']] = new Entry($month['rx'], $month['tx'], true, $this->parseDate($month));
+            $this->months[] = new Entry($month['rx'], $month['tx'], true, $this->parseDate($month));
         }
 
         foreach ($interface['traffic']['top'] as $top) {
-            $this->top10[$top['id']] = new Entry($top['rx'], $top['tx'], true, $this->parseDate($top));
+            $this->top10[] = new Entry($top['rx'], $top['tx'], true, $this->parseDate($top));
         }
 
         foreach ($interface['traffic']['hour'] as $hour) {
