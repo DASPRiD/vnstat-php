@@ -19,7 +19,7 @@ class Reader
         $command = 'vnstat --json';
 
         if (null !== $interface) {
-            $command .= sprintf(' --iface %s', $interface);
+            $command .= sprintf(' --iface %s', escapeshellarg($interface));
         }
 
         $output = shell_exec($command);
