@@ -140,11 +140,18 @@ class Database
         }
 
         foreach ($interface['traffic'][$hoursCategory] as $hour) {
+            $hourDate = $this->parseDate($hour, $jsonVersion);
+
+            // Schema 1 has no time for hours, the id is the hour of the day
+            if (!array_key_exists('time', $hour)) {
+                $hourDate->setTime((int) $hour['id'], 0, 0);
+            }
+
             $this->hours[$hour['id']] = new Entry(
                 $hour['rx'] * $unitMultiplier,
                 $hour['tx'] * $unitMultiplier,
                 true,
-                $this->parseDate($hour, $jsonVersion)
+                $hourDate
             );
         }
 

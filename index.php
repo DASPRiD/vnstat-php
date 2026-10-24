@@ -23,9 +23,14 @@ $timezone = new DateTimeZone(date_default_timezone_get());
 function formatBytes($bytes)
 {
     $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
-    $pow   = floor(($bytes ? log($bytes) : 0) / log(1024));
-    $pow   = min($pow, count($units) - 1);
+    $pow   = (int) floor(($bytes > 0 ? log($bytes) : 0) / log(1024));
+    $pow   = max(0, min($pow, count($units) - 1));
     $bytes /= pow(1024, $pow);
+
+    // GiB and TiB with two decimal places, smaller units rounded as before
+    if ($pow >= 3) {
+        return number_format($bytes, 2, '.', '') . ' ' . $units[$pow];
+    }
 
     return round($bytes) . ' ' . $units[$pow];
 }
@@ -144,14 +149,18 @@ $dayFormatter = new IntlDateFormatter(
             <figure style="width: 100%; height: 300px;" id="hourly-chart"></figure>
             <script type="text/javascript">
                 <?php
-                $endHour   = (int) date('H');
-                $startHour = ($endHour - 23);
+                // Last 24 hours, oldest first. Entries are matched by their
+                // date and hour ("Y-m-d H"), not by array index: with the
+                // vnStat 2 JSON schema the hour ids are database row ids,
+                // so looking up $hours[0..23] only found empty placeholders
+                // and the hourly chart stayed empty.
+                $hoursByTime = [];
 
-                if ($startHour < 0) {
-                    $startHour = 24 + $startHour;
+                foreach ($database->getHours() as $hour) {
+                    if ($hour->isFilled() && null !== $hour->getDateTime()) {
+                        $hoursByTime[$hour->getDateTime()->format('Y-m-d H')] = $hour;
+                    }
                 }
-
-                $hours = $database->getHours();
 
                 $receivedData = [
                     'className' => '.received',
@@ -163,24 +172,23 @@ $dayFormatter = new IntlDateFormatter(
                     'data'      => [],
                 ];
 
-                $maxBytes = 0;
+                // The window ends with the hour of vnStat's last update. Both
+                // the update time and the hour entries come from vnStat in the
+                // same (local) time, so a differing PHP timezone cannot shift
+                // the window.
+                $slot = clone $database->getUpdatedAt();
+                $slot->setTime((int) $slot->format('H'), 0, 0);
+                $slot->modify('-23 hours');
 
-                for ($i = $startHour; $i < 24; $i++) {
-                    $hour = $hours[$i];
-                    $receivedData['data'][] = ['x' => $i, 'y' => $hour->getBytesReceived()];
-                    $sentData['data'][] = ['x' => $i, 'y' => $hour->getBytesSent()];
+                for ($i = 0; $i < 24; $i++) {
+                    $key      = $slot->format('Y-m-d H');
+                    $received = isset($hoursByTime[$key]) ? $hoursByTime[$key]->getBytesReceived() : 0;
+                    $sent     = isset($hoursByTime[$key]) ? $hoursByTime[$key]->getBytesSent() : 0;
 
-                    $maxBytes = max($maxBytes, $hour->getBytesReceived(), $hour->getBytesSent());
-                }
+                    $receivedData['data'][] = ['x' => (int) $slot->format('G'), 'y' => $received];
+                    $sentData['data'][] = ['x' => (int) $slot->format('G'), 'y' => $sent];
 
-                if ($endHour !== 23) {
-                    for ($i = 0; $i <= $endHour; $i++) {
-                        $hour = $hours[$i];
-                        $receivedData['data'][] = ['x' => $i, 'y' => $hour->getBytesReceived()];
-                        $sentData['data'][] = ['x' => $i, 'y' => $hour->getBytesSent()];
-
-                        $maxBytes = max($maxBytes, $hour->getBytesReceived(), $hour->getBytesSent());
-                    }
+                    $slot->modify('+1 hour');
                 }
                 ?>
                 var chart = new xChart(
@@ -199,10 +207,14 @@ $dayFormatter = new IntlDateFormatter(
                         "tickHintX": -25,
                         "tickFormatY": function (y) {
                             var units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
-                            var pow   = Math.floor((y ? Math.log(y) : 0) / Math.log(1024));
-                            pow = Math.min(pow, units.length - 1);
+                            var pow   = Math.floor((y > 0 ? Math.log(y) : 0) / Math.log(1024));
+                            pow = Math.max(0, Math.min(pow, units.length - 1));
 
-                            return (Math.round(y / (1 << (10 * pow)) * 10) / 10) + ' ' + units[pow];
+                            // Math.pow instead of "1 << (10 * pow)": JavaScript
+                            // shifts are 32-bit, so 1 << 40 would be 256.
+                            var scaled = y / Math.pow(1024, pow);
+
+                            return (pow >= 3 ? scaled.toFixed(2) : (Math.round(scaled * 10) / 10)) + ' ' + units[pow];
                         },
                         "sortX": function (a, b) {
                             // This actually only works because we hacked the

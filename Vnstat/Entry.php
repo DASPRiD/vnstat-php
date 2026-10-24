@@ -31,7 +31,7 @@ class Entry
      * @param bool          $filled
      * @param DateTime|null $dateTime
      */
-    public function __construct($received, $sent, $filled, DateTime $dateTime = null)
+    public function __construct($received, $sent, $filled, ?DateTime $dateTime = null)
     {
         $this->bytesReceived = $received;
         $this->bytesSent     = $sent;
