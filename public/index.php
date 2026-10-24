@@ -1,8 +1,25 @@
 <?php
-require 'vendor/autoload.php';
+$configFile = dirname(__DIR__) . '/config/config.php';
+$legacyConfigFile = dirname(__DIR__) . '/config.php';
 
-if (file_exists(__DIR__ . '/config.php')) {
-    $config = require __DIR__ . '/config.php';
+// Drop this, the "/config.php" line in .gitignore and the upgrade section in
+// the README once the v2.0.0 tag is a year old.
+if (file_exists($legacyConfigFile)) {
+    http_response_code(500);
+    header('Content-Type: text/plain; charset=utf-8');
+
+    exit(sprintf(
+        "The configuration file has moved.\n\n%s\n",
+        file_exists($configFile)
+            ? 'Delete config.php; config/config.php already exists.'
+            : 'Move config.php to config/config.php.'
+    ));
+}
+
+require dirname(__DIR__) . '/vendor/autoload.php';
+
+if (file_exists($configFile)) {
+    $config = require $configFile;
 } else {
     $config = [];
 }

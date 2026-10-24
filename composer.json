@@ -1,7 +1,7 @@
 {
     "autoload": {
-        "psr-0": {
-            "Vnstat": "."
+        "psr-4": {
+            "Vnstat\\": "src/"
         }
     }
 }
