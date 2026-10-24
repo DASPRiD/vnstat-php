@@ -212,8 +212,6 @@ $charts = [
                                     continue;
                                 }
 
-                                $entry->getDateTime()->setTimeZone($timezone);
-
                                 // And again we can't just multiply the number of days
                                 // by the number of normal seconds to be accurate.
                                 $diffDate = clone $entry->getDateTime();
