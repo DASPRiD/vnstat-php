@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A push to a branch with an open pull request would otherwise run the whole
+# matrix twice.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # composer.json declares ">=8.2" with no upper bound, so every version
+        # still in security support has to pass.
+        php: ['8.2', '8.3', '8.4', '8.5']
+
+    name: PHP ${{ matrix.php }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: intl, json, dom, mbstring, xmlwriter
+          coverage: none
+
+      - run: composer validate --strict
+
+      - run: composer install --no-interaction --no-progress
+
+      - run: ./bin/lint.sh
+
+      - run: ./vendor/bin/phpunit
+
+      - run: ./bin/smoke-test.sh
