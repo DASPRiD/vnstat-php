@@ -1,4 +1,8 @@
 {
+    "name": "dasprid/vnstat-php",
+    "description": "A PHP frontend for vnStat network traffic statistics",
+    "type": "project",
+    "license": "MIT",
     "require": {
         "php": ">=8.2",
         "ext-intl": "*",
