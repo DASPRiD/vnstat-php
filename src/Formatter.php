@@ -25,9 +25,15 @@ class Formatter
 
     public static function ratio(int $bytesReceived, int $bytesSent): string
     {
-        $percentageReceived = $bytesReceived / ($bytesReceived + $bytesSent) * 100;
+        $total = $bytesReceived + $bytesSent;
 
-        return sprintf('<div class="ratio"><div style="width: %f%%;"></div></div>', $percentageReceived);
+        // vnStat records an hour with no traffic at all, and a bar split
+        // between two shares of nothing would claim it was all sent.
+        if (0 === $total) {
+            return '';
+        }
+
+        return sprintf('<div class="ratio"><div style="width: %f%%;"></div></div>', $bytesReceived / $total * 100);
     }
 
     private static function unitIndex(int|float $value, int $unitCount, int $base): int

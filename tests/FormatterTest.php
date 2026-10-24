@@ -57,4 +57,9 @@ class FormatterTest extends TestCase
     {
         self::assertStringContainsString('width: 0.000000%', Formatter::ratio(0, 4));
     }
+
+    public function testDrawsNoRatioBarForAnEntryWithNoTraffic(): void
+    {
+        self::assertSame('', Formatter::ratio(0, 0));
+    }
 }
