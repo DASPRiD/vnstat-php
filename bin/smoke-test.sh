@@ -49,11 +49,12 @@ fi
 
 fetch() {
     realpath "$1" > "$workdir/current"
-    php -r '
+    PATH_TO_GET="${2:-/}" php -r '
         // ignore_errors keeps the body of a 4xx or 5xx response, which is the
         // half of this script that checks the error path.
         $context = stream_context_create(["http" => ["ignore_errors" => true]]);
-        $body = @file_get_contents("http://127.0.0.1:" . getenv("PORT") . "/", false, $context);
+        $url = "http://127.0.0.1:" . getenv("PORT") . getenv("PATH_TO_GET");
+        $body = @file_get_contents($url, false, $context);
         preg_match("{ (\d{3}) }x", $http_response_header[0] ?? "", $match);
         echo ($match[1] ?? "000"), "\n", $body;
     '
@@ -137,6 +138,47 @@ for reference in $references; do
         printf 'ok   %s\n' "$asset"
     fi
 done
+
+check_live() {
+    local path="$1" expected="$2" expected_key="$3"
+    local response code body
+
+    response=$(fetch tests/fixtures/vnstat-2.13.json "$path")
+    code=${response%%$'\n'*}
+    body=${response#*$'\n'}
+
+    if [ "$code" != "$expected" ]; then
+        printf 'FAIL %s: expected HTTP %s, got %s\n' "$path" "$expected" "$code"
+        status=1
+        return
+    fi
+
+    if ! printf '%s' "$body" | PHP_BODY_KEY="$expected_key" php -r '
+        $decoded = json_decode(stream_get_contents(STDIN), true);
+        exit(is_array($decoded) && array_key_exists(getenv("PHP_BODY_KEY"), $decoded) ? 0 : 1);
+    '; then
+        printf 'FAIL %s: body is not JSON carrying "%s": %s\n' "$path" "$expected_key" "$body"
+        status=1
+        return
+    fi
+
+    printf 'ok   %s (HTTP %s)\n' "$path" "$code"
+}
+
+# The fixtures report eth0, and live.php now serves only what the page itself
+# reports, so the success path needs that interface to exist here. The
+# rejection path does not, and is the half that guards the endpoint.
+if [ -f config/config.php ]; then
+    echo 'skip live.php (a config file is present, so the allowlist differs)'
+else
+    check_live '/live.php?interface=nosuchif' 404 error
+
+    if [ -r /sys/class/net/eth0/statistics/rx_bytes ]; then
+        check_live '/live.php?interface=eth0' 200 received
+    else
+        echo 'skip live.php success path (this host has no eth0, which the fixtures report)'
+    fi
+fi
 
 # Diagnostics reach the server log whatever display_errors and html_errors are
 # set to, so this catches anything the response body check misses.

@@ -174,6 +174,21 @@ $charts = [
                 ); ?>
             </script>
 
+            <section aria-labelledby="live-heading">
+                <h2 id="live-heading">Live</h2>
+                <p id="live-rates">
+                    <span>Received <strong id="live-received">&mdash;</strong></span>
+                    <span>Sent <strong id="live-sent">&mdash;</strong></span>
+                    <span id="live-status" aria-live="polite"></span>
+                </p>
+                <figure id="live-figure">
+                    <canvas
+                        id="live-chart"
+                        data-interface="<?php echo htmlspecialchars($interface ?? $database->getInterface()); ?>"
+                    ></canvas>
+                </figure>
+            </section>
+
             <section aria-labelledby="five-minute-heading">
                 <h2 id="five-minute-heading">Five minutes</h2>
                 <figure><canvas id="five-minute-chart"></canvas></figure>
